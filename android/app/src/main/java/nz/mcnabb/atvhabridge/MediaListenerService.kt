@@ -53,7 +53,16 @@ class MediaListenerService : NotificationListenerService() {
     private val heartbeat = object : Runnable {
         override fun run() {
             BridgeState.sensors = DeviceSensors.collect(this@MediaListenerService)
-            refresh()
+            // Re-scan active sessions (not just refresh the current one) so a session that
+            // came up without a change event — or after a lost attach — still gets picked up.
+            val m = mediaSessionManager
+            if (m != null) {
+                runCatching {
+                    selectController(
+                        m.getActiveSessions(ComponentName(this@MediaListenerService, MediaListenerService::class.java))
+                    )
+                }.onFailure { refresh() }
+            } else refresh()
             mainHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS)
         }
     }
@@ -101,15 +110,34 @@ class MediaListenerService : NotificationListenerService() {
                 Log.e(TAG, "no port bound in ${Config.PORT}..${Config.PORT + 4}; not advertising")
             }
 
-            val manager = getSystemService(MediaSessionManager::class.java)
-            mediaSessionManager = manager
-            val component = ComponentName(this, MediaListenerService::class.java)
-            manager.addOnActiveSessionsChangedListener(sessionsChangedListener, component)
-            selectController(manager.getActiveSessions(component))
+            mediaSessionManager = getSystemService(MediaSessionManager::class.java)
+            attachMediaSessions(attempt = 0)
 
             mainHandler.postDelayed(heartbeat, HEARTBEAT_INTERVAL_MS)
         } catch (e: Exception) {
             Log.e(TAG, "onListenerConnected failed: ${e.message}")
+        }
+    }
+
+    /** Wire up media-session reading, retrying through the transient "Missing permission
+     * to control media" SecurityException the system throws for a few hundred ms right
+     * after the notification listener (re)binds. Without the retry the first
+     * getActiveSessions() throws once, selectController never runs, and a stable session
+     * (Jellyfin fires no change event once it's up) is never picked up — so nothing ever
+     * shows as now-playing. */
+    private fun attachMediaSessions(attempt: Int) {
+        val manager = mediaSessionManager ?: return
+        val component = ComponentName(this, MediaListenerService::class.java)
+        try {
+            runCatching { manager.removeOnActiveSessionsChangedListener(sessionsChangedListener) }
+            manager.addOnActiveSessionsChangedListener(sessionsChangedListener, component)
+            selectController(manager.getActiveSessions(component))
+        } catch (e: SecurityException) {
+            if (attempt < MEDIA_ATTACH_MAX_RETRIES) {
+                mainHandler.postDelayed({ attachMediaSessions(attempt + 1) }, MEDIA_ATTACH_RETRY_MS)
+            } else {
+                Log.e(TAG, "media session attach failed after $attempt retries: ${e.message}")
+            }
         }
     }
 
@@ -147,7 +175,15 @@ class MediaListenerService : NotificationListenerService() {
 
     private fun pickController(controllers: List<MediaController>): MediaController? {
         controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }?.let { return it }
-        return controllers.firstOrNull { it.metadata != null }
+        controllers.firstOrNull { it.metadata != null }?.let { return it }
+        // Last resort: an app that's active but publishes neither a play-state nor
+        // metadata — Jellyfin's video player sits at STATE_NONE. Take it so buildSnapshot
+        // can still name the app and recover the title/poster from the Watch-Next tile;
+        // skip clearly-dead sessions so a stopped/errored one isn't shown as playing.
+        return controllers.firstOrNull {
+            val s = it.playbackState?.state
+            s != PlaybackState.STATE_STOPPED && s != PlaybackState.STATE_ERROR
+        }
     }
 
     private fun refresh() {
@@ -263,6 +299,9 @@ class MediaListenerService : NotificationListenerService() {
         private const val TAG = "MediaListenerService"
         private const val HEARTBEAT_INTERVAL_MS = 30_000L
         private const val AD_TICK_SLACK_MS = 200L
+        // Retry window for the "Missing permission to control media" race right after (re)bind.
+        private const val MEDIA_ATTACH_RETRY_MS = 800L
+        private const val MEDIA_ATTACH_MAX_RETRIES = 8
 
         @Volatile
         var isConnected = false
