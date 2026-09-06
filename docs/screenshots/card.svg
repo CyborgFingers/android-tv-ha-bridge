@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 480" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <clipPath id="card"><rect x="10" y="10" width="400" height="460" rx="16"/></clipPath>
+    <linearGradient id="poster" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a1c71"/><stop offset=".55" stop-color="#5b2a63"/><stop offset="1" stop-color="#141A22"/>
+    </linearGradient>
+    <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".35" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".85"/>
+    </linearGradient>
+  </defs>
+  <rect width="420" height="480" fill="#F7F7F9"/>
+  <g clip-path="url(#card)">
+    <rect x="10" y="10" width="400" height="460" fill="#ffffff"/>
+    <!-- poster -->
+    <rect x="10" y="10" width="400" height="232" fill="url(#poster)"/>
+    <rect x="10" y="10" width="400" height="232" fill="url(#scrim)"/>
+    <!-- top row -->
+    <circle cx="30" cy="34" r="4" fill="#FF5252"/>
+    <text x="40" y="38" fill="#FF5252" font-size="12" font-weight="700" letter-spacing="1">LIVE</text>
+    <text x="76" y="38" fill="#e9ecf1" font-size="12" font-weight="600" letter-spacing="1">TVNZ+</text>
+    <!-- title block -->
+    <text x="30" y="188" fill="#ffffff" font-size="24" font-weight="800">MasterChef Australia</text>
+    <text x="30" y="210" fill="#d7dbe2" font-size="14">Season 16 · Episode 42</text>
+    <!-- progress -->
+    <rect x="30" y="222" width="360" height="4" rx="2" fill="#ffffff" opacity=".28"/>
+    <rect x="30" y="222" width="126" height="4" rx="2" fill="#FF5252"/>
+    <text x="30" y="238" fill="#c9cfd8" font-size="11">20:41</text>
+    <text x="360" y="238" fill="#c9cfd8" font-size="11" text-anchor="end">1:00:00</text>
+    <!-- up next -->
+    <text x="30" y="270" fill="#5B6675" font-size="12">Up next</text>
+    <text x="76" y="270" fill="#141A22" font-size="12" font-weight="600">The Chase Australia</text>
+    <!-- transport row -->
+    <g transform="translate(0,296)">
+      <rect x="120" y="0" width="40" height="40" rx="10" fill="#eef0f3"/>
+      <path d="M132 8h4v24h-4z M152 20l-14 10V10z" fill="#141A22"/>
+      <rect x="168" y="0" width="48" height="40" rx="10" fill="#FF5252"/>
+      <path d="M186 10h4v20h-4z M196 10h4v20h-4z" fill="#fff"/>
+      <rect x="224" y="0" width="40" height="40" rx="10" fill="#eef0f3"/>
+      <path d="M248 8h4v24h-4z M232 30l14-10-14-10z" fill="#141A22"/>
+      <rect x="278" y="0" width="40" height="40" rx="10" fill="#eef0f3"/>
+      <text x="298" y="26" fill="#141A22" font-size="16" text-anchor="middle">🔉</text>
+    </g>
+    <!-- dpad -->
+    <g transform="translate(150,348)" fill="#eef0f3">
+      <rect x="40" y="0" width="40" height="40" rx="10"/>
+      <rect x="0" y="44" width="40" height="40" rx="10"/>
+      <rect x="80" y="44" width="40" height="40" rx="10"/>
+      <rect x="0" y="88" width="40" height="40" rx="10"/>
+      <rect x="40" y="88" width="40" height="40" rx="10"/>
+      <rect x="80" y="88" width="40" height="40" rx="10"/>
+      <circle cx="60" cy="64" r="20" fill="#FF5252"/>
+    </g>
+    <g transform="translate(150,348)" fill="#141A22">
+      <path d="M60 12l7 8H53z"/>
+      <path d="M12 68l-8-6 8-6z" transform="translate(0,0)"/>
+      <path d="M108 56l8 6-8 6z"/>
+      <path d="M60 116l7-8H53z"/>
+    </g>
+    <text x="210" y="418" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">OK</text>
+    <text x="170" y="418" fill="#141A22" font-size="13" text-anchor="middle">‹</text>
+    <text x="250" y="418" fill="#141A22" font-size="14" text-anchor="middle">⌂</text>
+  </g>
+  <rect x="10" y="10" width="400" height="460" rx="16" fill="none" stroke="#e5e7eb"/>
+</svg>

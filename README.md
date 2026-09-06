@@ -17,7 +17,7 @@ Made by **Josh McNabb** · [@CyborgFingers](https://github.com/CyborgFingers) ·
 
 | Pairing on the TV | Device in Home Assistant | The TV frame card |
 | :---: | :---: | :---: |
-| ![Pairing code on the TV](docs/screenshots/pairing.png) | ![Device page in Home Assistant](docs/screenshots/ha-device.png) | ![TV frame Lovelace card](docs/screenshots/card.png) |
+| ![Pairing code on the TV](docs/screenshots/pairing.svg) | ![Device page in Home Assistant](docs/screenshots/ha-device.svg) | ![TV frame Lovelace card](docs/screenshots/card.svg) |
 
 </div>
 

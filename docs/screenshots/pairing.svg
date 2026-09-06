@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 480" font-family="'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <radialGradient id="glow" cx=".5" cy=".35" r=".8">
+      <stop offset="0" stop-color="#1b2430"/><stop offset="1" stop-color="#0B0F14"/>
+    </radialGradient>
+  </defs>
+  <rect width="420" height="480" fill="url(#glow)"/>
+
+  <!-- mark -->
+  <g transform="translate(192,34)">
+    <rect width="36" height="36" rx="9" fill="#141A22" stroke="#2a3644"/>
+    <rect x="8" y="10" width="20" height="13" rx="2.5" fill="none" stroke="#F7F7F9" stroke-width="2"/>
+    <path d="M18 15l5 3-5 3z" fill="#FF5252"/>
+    <path d="M6 30q12 -9 24 0" fill="none" stroke="#4CC2FF" stroke-width="2"/>
+  </g>
+
+  <text x="210" y="102" fill="#ffffff" font-size="20" font-weight="800" text-anchor="middle">Pair with Home Assistant</text>
+  <text x="210" y="126" fill="#AAB3BF" font-size="13" text-anchor="middle">Scan the code, or enter it in Home Assistant.</text>
+
+  <!-- QR -->
+  <rect x="140" y="150" width="140" height="140" rx="14" fill="#ffffff"/>
+  <g fill="#0B0F14" transform="translate(154,164)">
+    <!-- finder patterns -->
+    <path d="M0 0h32v32H0z M6 6h20v20H6z M11 11h10v10H11z"/>
+    <path d="M80 0h32v32H80z M86 6h20v20H86z M91 11h10v10H91z"/>
+    <path d="M0 80h32v32H0z M6 86h20v20H6z M11 91h10v10H11z"/>
+    <!-- scatter modules -->
+    <g>
+      <rect x="42" y="4" width="8" height="8"/><rect x="58" y="4" width="8" height="8"/><rect x="42" y="20" width="8" height="8"/>
+      <rect x="66" y="20" width="8" height="8"/><rect x="4" y="42" width="8" height="8"/><rect x="20" y="42" width="8" height="8"/>
+      <rect x="42" y="42" width="8" height="8"/><rect x="58" y="42" width="8" height="8"/><rect x="74" y="42" width="8" height="8"/>
+      <rect x="96" y="42" width="8" height="8"/><rect x="30" y="58" width="8" height="8"/><rect x="50" y="58" width="8" height="8"/>
+      <rect x="70" y="58" width="8" height="8"/><rect x="90" y="58" width="8" height="8"/><rect x="42" y="74" width="8" height="8"/>
+      <rect x="62" y="74" width="8" height="8"/><rect x="82" y="74" width="8" height="8"/><rect x="104" y="74" width="8" height="8"/>
+      <rect x="42" y="92" width="8" height="8"/><rect x="58" y="96" width="8" height="8"/><rect x="74" y="92" width="8" height="8"/>
+      <rect x="90" y="96" width="8" height="8"/><rect x="104" y="104" width="8" height="8"/><rect x="42" y="104" width="8" height="8"/>
+    </g>
+  </g>
+
+  <text x="210" y="330" fill="#7c8794" font-size="12" text-anchor="middle" letter-spacing="2">OR ENTER THIS CODE</text>
+
+  <!-- 6-digit code -->
+  <text x="210" y="380" fill="#FF5252" font-size="52" font-weight="800" text-anchor="middle" letter-spacing="6" font-family="'SFMono-Regular',ui-monospace,Menlo,Consolas,monospace">418 293</text>
+
+  <!-- device name chip -->
+  <rect x="150" y="410" width="120" height="34" rx="17" fill="#141A22" stroke="#2a3644"/>
+  <circle cx="172" cy="427" r="4" fill="#4CC2FF"/>
+  <text x="186" y="431" fill="#e9ecf1" font-size="13" font-weight="600">Bedroom TV</text>
+</svg>
