@@ -13,6 +13,7 @@ from collections.abc import Callable
 
 import aiohttp
 
+from homeassistant.components import zeroconf
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -21,6 +22,7 @@ from .const import DOMAIN, EVENT_UPDATED
 _LOGGER = logging.getLogger(__name__)
 
 RECONNECT_SECONDS = 5
+SERVICE_TYPE = "_atvhabridge._tcp.local."
 
 
 def ssl_param(fingerprint: str | None):
@@ -139,14 +141,16 @@ class BridgeClient:
             await self._ws.close()
 
     async def _run(self) -> None:
-        url = f"wss://{self.host}:{self.port}/ws?token={self._token}"
+        fails = 0
         while True:
+            url = f"wss://{self.host}:{self.port}/ws?token={self._token}"
             try:
                 async with self._session.ws_connect(url, ssl=self._ssl, heartbeat=30) as ws:
                     self._ws = ws
                     self.available = True
+                    fails = 0
                     self._notify()
-                    _LOGGER.debug("Connected to bridge %s", self.device_id)
+                    _LOGGER.debug("Connected to bridge %s at %s:%s", self.device_id, self.host, self.port)
                     async for msg in ws:
                         if msg.type is aiohttp.WSMsgType.TEXT:
                             try:
@@ -170,7 +174,42 @@ class BridgeClient:
             if self.available:
                 self.available = False
                 self._notify()
+            fails += 1
+            # The bridge's bound port can change across restarts (it advertises the port
+            # it actually got). After a couple of misses, re-resolve it over mDNS and
+            # reconnect to the new address — no re-pair needed.
+            if fails >= 2:
+                found = await self._rediscover()
+                if found and found != (self.host, self.port):
+                    _LOGGER.info(
+                        "Bridge %s moved %s:%s -> %s:%s", self.device_id, self.host, self.port, *found
+                    )
+                    self.host, self.port = found
+                    fails = 0
+                    continue
             await asyncio.sleep(RECONNECT_SECONDS)
+
+    async def _rediscover(self) -> tuple[str, int] | None:
+        """Resolve the bridge's current host/port from its mDNS advertisement, so a
+        port change (or a moved IP) heals itself without a re-pair."""
+        try:
+            from zeroconf.asyncio import AsyncServiceInfo
+
+            aiozc = await zeroconf.async_get_async_instance(self._hass)
+            name = f"MediaBridge-{self.device_id[:6]}.{SERVICE_TYPE}"
+            info = AsyncServiceInfo(SERVICE_TYPE, name)
+            if not await info.async_request(aiozc.zeroconf, 3000):
+                return None
+            # Guard against a 6-char service-name collision with another bridge.
+            adv_id = info.properties.get(b"id", b"").decode(errors="ignore")
+            if adv_id and adv_id != self.device_id:
+                return None
+            addrs = info.parsed_addresses()
+            if addrs and info.port:
+                return addrs[0], int(info.port)
+        except Exception as err:  # noqa: BLE001 - discovery must never crash the loop
+            _LOGGER.debug("Bridge %s rediscover failed: %s", self.device_id, err)
+        return None
 
     async def async_send(self, action: str, **extra) -> None:
         """Send a control command — over the open socket first, HTTP as fallback."""

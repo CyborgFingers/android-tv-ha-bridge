@@ -3,12 +3,12 @@
   "name": "Android TV HA Bridge",
   "codeowners": ["@CyborgFingers"],
   "config_flow": true,
-  "dependencies": ["http", "frontend"],
+  "dependencies": ["http", "frontend", "zeroconf"],
   "documentation": "https://github.com/CyborgFingers/android-tv-ha-bridge",
   "integration_type": "device",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/CyborgFingers/android-tv-ha-bridge/issues",
   "requirements": [],
-  "version": "0.1.2",
+  "version": "0.1.3",
   "zeroconf": ["_atvhabridge._tcp.local."]
 }

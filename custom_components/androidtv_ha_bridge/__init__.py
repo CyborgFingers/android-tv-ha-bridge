@@ -46,8 +46,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: BridgeConfigEntry) -> bo
     client.device_name = entry.title
     await client.async_start()
     entry.runtime_data = client
+    # Reload if zeroconf updates the entry (e.g. the bridge's host/port changed) so the
+    # client reconnects to the new address.
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: BridgeConfigEntry) -> None:
+    """Reload when the entry data changes (host/port re-discovery)."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: BridgeConfigEntry) -> bool:
