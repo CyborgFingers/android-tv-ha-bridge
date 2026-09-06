@@ -4,7 +4,7 @@
  *  auto-registers it, so `type: custom:androidtv-ha-bridge-card` works out of the box.
  *  Built entirely with DOM methods + textContent — never innerHTML — so nothing the
  *  bridge reports (titles, app names) can inject markup.
- *  © 2026 Josh McNabb. PolyForm Noncommercial 1.0.0. */
+ *  © 2026 Josh McNabb. Licensed under GPL-3.0-or-later. */
 const VERSION = "0.1.0";
 
 const ICONS = {

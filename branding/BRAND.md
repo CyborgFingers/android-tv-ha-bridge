@@ -12,7 +12,7 @@ Use it under the wordmark, in the README hero, on the landing page and in store 
 | Short | Your TV, in Home Assistant. |
 | Proof chips | `100% local` · `No ADB` · `Native control` · `Works with HACS` |
 
-Made by **Josh McNabb** ([@CyborgFingers](https://github.com/CyborgFingers)). Licensed [PolyForm Noncommercial 1.0.0](../LICENSE).
+Made by **Josh McNabb** ([@CyborgFingers](https://github.com/CyborgFingers)). Licensed [GPL-3.0](../LICENSE).
 
 ---
 

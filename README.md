@@ -6,7 +6,7 @@
 
 **Now-playing and native control for Android TV / Google TV, inside Home Assistant — 100 % local. No ADB, no cloud, no account.**
 
-[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-FF5252?labelColor=0B0F14)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-FF5252?labelColor=0B0F14)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-4CC2FF?labelColor=0B0F14)](https://github.com/hacs/integration)
 [![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-4CC2FF?labelColor=0B0F14)](https://github.com/CyborgFingers/android-tv-ha-bridge/releases)
 [![Made for Home Assistant](https://img.shields.io/badge/Made_for-Home_Assistant-41BDF5?labelColor=0B0F14&logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
@@ -171,6 +171,6 @@ Issues and pull requests are welcome — bug reports, app-compatibility notes an
 
 ## 📄 License
 
-[PolyForm Noncommercial License 1.0.0](LICENSE) — source-available, free for personal and other non-commercial use. Commercial use requires a separate license from the author; [get in touch via GitHub](https://github.com/CyborgFingers/android-tv-ha-bridge/issues).
+[GNU General Public License v3.0](LICENSE) — free to use, modify and redistribute; any derivative work must remain open-source under the same license. © 2026 Josh McNabb.
 
 Copyright © 2026 **Josh McNabb**. *Android TV* and *Google TV* are trademarks of Google LLC; *Home Assistant* is a trademark of the Open Home Foundation. This project is not affiliated with either.
