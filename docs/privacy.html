@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Android TV HA Bridge</title>
+<style>
+  :root{
+    --bg:#F7F7F9; --card:#fff; --ink:#0B0F14; --muted:#5B6675; --line:#e5e7eb;
+    --coral:#FF5252; --signal:#177FBF;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0B0F14; --card:#141A22; --ink:#F7F7F9; --muted:#AAB3BF; --line:#243040; --signal:#4CC2FF; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.65 'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+  .mark{width:40px;height:40px;flex:0 0 auto}
+  h1{font-size:1.6rem;margin:.4em 0 .1em}
+  h2{font-size:1.15rem;margin:1.6em 0 .4em}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .meta{color:var(--muted);font-size:.9rem}
+  a{color:var(--signal)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:18px 0}
+  .lead{font-size:1.05rem}
+  .lead b{color:var(--coral)}
+  table{border-collapse:collapse;width:100%;font-size:.94rem;margin:.4em 0}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600}
+  code{background:rgba(127,127,127,.15);padding:1px 5px;border-radius:5px;font-size:.9em}
+  footer{color:var(--muted);font-size:.85rem;margin-top:32px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg class="mark" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="40" height="40" rx="10" fill="#0B0F14"/>
+      <rect x="9" y="11" width="22" height="14" rx="3" fill="none" stroke="#F7F7F9" stroke-width="2.2"/>
+      <path d="M20 15.5l5.5 2.6-5.5 2.6z" fill="#FF5252"/>
+      <path d="M7 33q13 -10 26 0" fill="none" stroke="#4CC2FF" stroke-width="2.4"/>
+    </svg>
+    <div><strong>Android TV HA Bridge</strong></div>
+  </header>
+
+  <h1>Privacy Policy</h1>
+  <p class="sub meta">Effective 6 September 2026 · Developer: Josh McNabb (@CyborgFingers) · App ID <code>nz.mcnabb.atvhabridge</code></p>
+
+  <div class="card">
+    <p class="lead"><b>Android TV HA Bridge does not collect, store, transmit, or share any personal data.</b> No accounts, no analytics, no advertising, no cloud. Everything happens on your own local network, between your TV and your own Home Assistant installation.</p>
+  </div>
+
+  <h2>What the app does</h2>
+  <p>The app runs on your Android TV / Google TV and exposes — over your <strong>local network only</strong> — what the TV is currently playing, plus the ability to control it. Your Home Assistant server connects after you approve a one-time pairing. The developer operates no servers and receives no data.</p>
+
+  <h2>Data we collect</h2>
+  <p><strong>None.</strong> The app contains no analytics, crash-reporting, advertising, or tracking SDKs, and sends no data to the developer or any third party.</p>
+
+  <h2>Information handled locally (and never sent to us)</h2>
+  <p>To do its job the app reads the following <strong>on the device</strong> and makes it available <strong>only</strong> to the Home Assistant instance you pair with, over your local network:</p>
+  <table>
+    <tr><th>What</th><th>Why</th><th>Leaves your network?</th></tr>
+    <tr><td>Active media session (title, artwork, position, state)</td><td>Report what's playing (notification access)</td><td>No</td></tr>
+    <tr><td>Android TV "Watch Next" list (<code>READ_TV_LISTINGS</code>)</td><td>Recover show/episode titles for apps with no media metadata</td><td>No</td></tr>
+    <tr><td>List of installed apps (<code>QUERY_ALL_PACKAGES</code>)</td><td>Let Home Assistant launch apps</td><td>No</td></tr>
+    <tr><td>Device status (model, network, storage, memory, volume, Wi-Fi, uptime)</td><td>Optional Home Assistant sensors</td><td>No</td></tr>
+    <tr><td>Navigation actions (D-pad, Back, Home)</td><td>Performed only when you trigger them from Home Assistant (accessibility service)</td><td>No</td></tr>
+  </table>
+  <p>Communication between the TV and Home Assistant is protected by a per-device <strong>paired token</strong> and <strong>TLS encryption</strong> with certificate-fingerprint pinning. None of the above ever reaches the developer.</p>
+
+  <h2>Data sharing</h2>
+  <p>We do not share any data, because we do not collect any.</p>
+
+  <h2>Children's privacy</h2>
+  <p>The app is not directed at children and collects no data from anyone.</p>
+
+  <h2>Changes</h2>
+  <p>Any changes will be published on this page.</p>
+
+  <h2>Contact</h2>
+  <p>Questions? <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/issues">Open an issue on GitHub</a>.</p>
+
+  <footer>Android TV HA Bridge · © 2026 Josh McNabb · Licensed GPL-3.0 · <a href="./">Home</a></footer>
+</div>
+</body>
+</html>

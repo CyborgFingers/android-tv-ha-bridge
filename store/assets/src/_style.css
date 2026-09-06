@@ -1,0 +1,40 @@
+html,body{margin:0;padding:0}
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+.stage{position:relative;overflow:hidden;color:#fff;
+  font-family:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  background:radial-gradient(1200px 700px at 22% 18%,#20304a 0%,#0B0F14 60%);}
+.glow{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5}
+.eyebrow{color:#4CC2FF;font-size:20px;font-weight:700;letter-spacing:3px;text-transform:uppercase}
+.title{font-weight:800;line-height:1.02;letter-spacing:-1px}
+.tag{color:#fff}
+.tag .c{color:#FF5252}
+.muted{color:#AAB3BF}
+.chips{display:flex;gap:12px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+  border-radius:999px;padding:9px 18px;font-size:19px;font-weight:600}
+.chip b{color:#4CC2FF}
+/* now-playing card */
+.card{background:#12161d;border:1px solid #232c39;border-radius:20px;overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,.55)}
+.poster{aspect-ratio:16/9;background:
+  linear-gradient(135deg,#3a1c71,#5b2a63 55%,#141A22);position:relative;
+  display:flex;flex-direction:column;justify-content:flex-end;padding:26px}
+.poster .live{color:#FF5252;font-weight:800;font-size:18px;letter-spacing:1px;position:absolute;top:22px;left:26px}
+.poster .live b{color:#e9ecf1;font-weight:600;margin-left:10px}
+.poster h3{margin:0;font-size:34px;font-weight:800}
+.poster .sub{color:#d7dbe2;font-size:20px;margin-top:4px}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.25);margin-top:16px;overflow:hidden}
+.bar>i{display:block;height:100%;width:35%;background:#FF5252;border-radius:3px}
+.times{display:flex;justify-content:space-between;color:#c9cfd8;font-size:15px;margin-top:8px}
+.upnext{padding:14px 26px;color:#8b95a3;font-size:17px;background:#0f131a}
+.upnext b{color:#fff}
+/* controls */
+.remote{display:grid;gap:12px;justify-items:center}
+.rrow{display:flex;gap:14px}
+.key{width:74px;height:74px;border-radius:16px;background:#1a212b;border:1px solid #2b3542;
+  display:flex;align-items:center;justify-content:center}
+.key svg{width:34px;height:34px;fill:#e9ecf1}
+.key.ok{background:#FF5252;border-color:#FF5252;border-radius:50%;color:#fff;font-weight:800;font-size:22px}
+.key.pp{background:#FF5252;border-color:#FF5252}
+.sp{width:74px;height:74px;visibility:hidden}
+.mark{flex:0 0 auto}
