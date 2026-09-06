@@ -74,7 +74,7 @@ class MediaListenerService : NotificationListenerService() {
             BridgeState.fingerprint = TlsProvider.fingerprintHex()
             // Bind the first free port from Config.PORT upward (robust if another app
             // holds it). The actual port is advertised over mDNS + shown in the QR.
-            var bound = Config.PORT
+            var bound = 0
             for (p in Config.PORT..(Config.PORT + 4)) {
                 try {
                     val s = BridgeServer(p, pairing) { which ->
@@ -92,8 +92,14 @@ class MediaListenerService : NotificationListenerService() {
                     Log.w(TAG, "port $p busy, trying next: ${e.message}")
                 }
             }
-            BridgeState.port = bound
-            discovery = Discovery(this, bound, pairing).also { it.start() }
+            // Only advertise a port that actually bound — never a phantom default, or the
+            // mDNS advert points clients at a dead port (and clients can't self-heal).
+            if (bound > 0) {
+                BridgeState.port = bound
+                discovery = Discovery(this, bound, pairing).also { it.start() }
+            } else {
+                Log.e(TAG, "no port bound in ${Config.PORT}..${Config.PORT + 4}; not advertising")
+            }
 
             val manager = getSystemService(MediaSessionManager::class.java)
             mediaSessionManager = manager
@@ -116,8 +122,10 @@ class MediaListenerService : NotificationListenerService() {
             currentController = null
             mainHandler.removeCallbacks(heartbeat)
             mainHandler.removeCallbacks(adTick)
-            discovery?.stop(); discovery = null
-            server?.stop(); server = null
+            // Stop each independently so a throw from one (NanoHTTPD.stop can) doesn't
+            // skip the rest — especially requestRebind, without which we may not rebind.
+            runCatching { discovery?.stop() }; discovery = null
+            runCatching { server?.stop() }; server = null
             requestRebind(ComponentName(this, MediaListenerService::class.java))
         } catch (e: Exception) {
             Log.e(TAG, "onListenerDisconnected failed: ${e.message}")
