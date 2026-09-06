@@ -126,7 +126,7 @@ Found an app that behaves differently? Please [open an issue](https://github.com
 
 Install **Android TV HA Bridge** on your Android TV / Google TV device, open it, and follow the on-screen steps to grant the three permissions.
 
-> Until the Google Play listing is live, sideload the APK from the [Releases](https://github.com/CyborgFingers/android-tv-ha-bridge/releases) page.
+> **Not on Google Play yet?** Download the latest **signed APK** from the [Releases](https://github.com/CyborgFingers/android-tv-ha-bridge/releases/latest) page and sideload it. On Android TV the simplest way is the **Downloader** app (AFTVnews) — enter the release URL — or run `adb install android-tv-ha-bridge-vX.Y.Z.apk` from a computer.
 
 | Permission | Why |
 | --- | --- |
