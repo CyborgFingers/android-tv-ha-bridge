@@ -1,6 +1,8 @@
 package nz.mcnabb.atvhabridge
 
 import android.content.ComponentName
+import android.media.AudioManager
+import android.media.AudioPlaybackConfiguration
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
@@ -33,6 +35,7 @@ class MediaListenerService : NotificationListenerService() {
     private var server: BridgeServer? = null
     private var discovery: Discovery? = null
     private var mediaSessionManager: MediaSessionManager? = null
+    private var audioManager: AudioManager? = null
     private var currentController: MediaController? = null
 
     private val adDetector = AdDetector()
@@ -68,6 +71,25 @@ class MediaListenerService : NotificationListenerService() {
     }
 
     private val adTick = Runnable { refresh() }
+
+    /** Audio start/stop/pause is our instant play/pause signal for apps with an empty
+     * session (Jellyfin) — republish the moment it changes instead of at the next heartbeat. */
+    private val audioCallback = object : AudioManager.AudioPlaybackCallback() {
+        override fun onPlaybackConfigChanged(configs: MutableList<AudioPlaybackConfiguration>?) {
+            mainHandler.post { refresh() }
+        }
+    }
+
+    private var lastScrapeRefreshMs = 0L
+
+    /** Republish shortly after an overlay scrape, throttled so a per-second scrape while
+     * the controls are up doesn't re-query Watch-Next every tick. */
+    private fun requestScrapeRefresh() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastScrapeRefreshMs < 2500) return
+        lastScrapeRefreshMs = now
+        mainHandler.post { refresh() }
+    }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -111,6 +133,9 @@ class MediaListenerService : NotificationListenerService() {
             }
 
             mediaSessionManager = getSystemService(MediaSessionManager::class.java)
+            audioManager = getSystemService(AudioManager::class.java)
+            audioManager?.registerAudioPlaybackCallback(audioCallback, mainHandler)
+            PlayerScrape.onScrape = { requestScrapeRefresh() }
             attachMediaSessions(attempt = 0)
 
             mainHandler.postDelayed(heartbeat, HEARTBEAT_INTERVAL_MS)
@@ -146,6 +171,8 @@ class MediaListenerService : NotificationListenerService() {
         isConnected = false
         try {
             mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
+            runCatching { audioManager?.unregisterAudioPlaybackCallback(audioCallback) }
+            PlayerScrape.onScrape = null
             currentController?.unregisterCallback(controllerCallback)
             currentController = null
             mainHandler.removeCallbacks(heartbeat)
@@ -162,6 +189,7 @@ class MediaListenerService : NotificationListenerService() {
 
     private fun selectController(controllers: List<MediaController>?) {
         val next = pickController(controllers.orEmpty())
+        Controls.currentMediaPackage = next?.packageName
         if (next?.sessionToken == currentController?.sessionToken) {
             refresh()
             return
@@ -252,8 +280,34 @@ class MediaListenerService : NotificationListenerService() {
 
         // Apps with an empty session (Jellyfin) report no position/duration — fall back to
         // the Watch-Next tile's saved position + episode duration so the card shows progress.
-        val durationMs = if (metaDurationMs > 0) metaDurationMs else wnDurationMs
-        val positionMs = (if (livePos > 0) livePos else wnPositionMs).coerceAtLeast(0)
+        var durationMs = if (metaDurationMs > 0) metaDurationMs else wnDurationMs
+        var positionMs = (if (livePos > 0) livePos else wnPositionMs).coerceAtLeast(0)
+        var state = playbackStateToString(ps?.state)
+
+        // Generic overlay scrape: for players that publish nothing to their session
+        // (Jellyfin), the accessibility service reads the live position/episode off the
+        // on-screen controls. Prefer it over the lagging Watch-Next tile; the audio signal
+        // (isMusicActive) gives play/pause and projects the position forward between reads.
+        if (mediaTitle.isNullOrBlank() &&
+            PlayerScrape.pkg == controller.packageName &&
+            PlayerScrape.ageMs() < SCRAPE_MAX_AGE_MS
+        ) {
+            val musicActive = runCatching { audioManager?.isMusicActive == true }.getOrDefault(false)
+            PlayerScrape.season?.let { season = it }
+            PlayerScrape.episode?.let { episodeNum = it }
+            PlayerScrape.title?.let { scraped ->
+                EP_PREFIX.replaceFirst(scraped, "").trim().ifBlank { null }?.let { episode = it }
+            }
+            val composed = listOfNotNull(series, episode).joinToString(" — ")
+            title = when {
+                composed.isNotBlank() -> composed
+                !title.isNullOrBlank() -> title
+                else -> PlayerScrape.title
+            }
+            if (PlayerScrape.durationMs > 0) durationMs = PlayerScrape.durationMs
+            positionMs = (PlayerScrape.positionMs + if (musicActive) PlayerScrape.ageMs() else 0L).coerceAtLeast(0)
+            state = if (musicActive) "playing" else "paused"
+        }
 
         return NowPlayingSnapshot(
             title = title,
@@ -266,7 +320,7 @@ class MediaListenerService : NotificationListenerService() {
             durationMs = durationMs,
             positionMs = positionMs,
             positionUpdatedAt = System.currentTimeMillis(),
-            state = playbackStateToString(ps?.state),
+            state = state,
             appPackage = controller.packageName,
             appName = resolveAppName(controller.packageName),
             ad = adDetector.update(controller.packageName, mediaTitle, durationMs, adFlag),
@@ -316,6 +370,11 @@ class MediaListenerService : NotificationListenerService() {
         // Retry window for the "Missing permission to control media" race right after (re)bind.
         private const val MEDIA_ATTACH_RETRY_MS = 800L
         private const val MEDIA_ATTACH_MAX_RETRIES = 8
+        // How long an accessibility overlay scrape stays usable (the reader projects the
+        // position forward from it while audio plays; a fresh scrape lands on each interaction).
+        private const val SCRAPE_MAX_AGE_MS = 20 * 60 * 1000L
+        // Strips a leading "S6:E13 — " so the episode label composes cleanly with the series.
+        private val EP_PREFIX = Regex("""^S\d+:?\s*E\d+\s*[—–-]\s*""")
 
         @Volatile
         var isConnected = false

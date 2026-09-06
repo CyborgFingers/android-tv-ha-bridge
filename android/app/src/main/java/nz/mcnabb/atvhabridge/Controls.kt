@@ -19,6 +19,10 @@ object Controls {
     @Volatile var accessibility: ControlAccessibilityService? = null
     @Volatile var appContext: Context? = null
 
+    /** Package of the app that owns the current media session — the accessibility
+     * scraper only reads the overlay while this app is foreground. */
+    @Volatile var currentMediaPackage: String? = null
+
     /** true if the command was dispatched. */
     fun handle(action: String, params: JSONObject): Boolean = when (action) {
         "play" -> transport { it.play() }
