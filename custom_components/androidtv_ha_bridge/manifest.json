@@ -3,6 +3,7 @@
   "name": "Android TV HA Bridge",
   "codeowners": ["@CyborgFingers"],
   "config_flow": true,
+  "dependencies": ["http", "frontend"],
   "documentation": "https://github.com/CyborgFingers/android-tv-ha-bridge",
   "integration_type": "device",
   "iot_class": "local_push",
