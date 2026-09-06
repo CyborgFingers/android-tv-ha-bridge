@@ -1,0 +1,30 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Add Android TV HA Bridge",
+        "description": "Enter the address of your Android TV. It is normally discovered automatically.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "pair": {
+        "title": "Pair with {name}",
+        "description": "Open the Android TV HA Bridge app on {name} and enter the 6-digit code it shows.",
+        "data": {
+          "code": "Pairing code"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Couldn't reach the bridge at that address.",
+      "invalid_code": "That code didn't work. Check the code on the TV and try again."
+    },
+    "abort": {
+      "already_configured": "This Android TV is already set up.",
+      "no_id": "The discovered device didn't report an ID."
+    }
+  }
+}

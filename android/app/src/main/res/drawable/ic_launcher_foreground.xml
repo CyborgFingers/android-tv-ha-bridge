@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV HA Bridge launcher mark. Generated from branding/ (same path data as icon.svg).
+     Content stays inside the 66dp adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.96"
+        android:scaleY="0.96"
+        android:translateX="23.3"
+        android:translateY="22.53">
+        <path
+            android:pathData="M13.5 6.5H50.5A7.5 7.5 0 0 1 58 14V31A7.5 7.5 0 0 1 50.5 38.5H13.5A7.5 7.5 0 0 1 6 31V14A7.5 7.5 0 0 1 13.5 6.5Z"
+            android:fillColor="#FFFFFF" />
+        <path
+            android:pathData="M14 11H50A3.5 3.5 0 0 1 53.5 14.5V30.5A3.5 3.5 0 0 1 50 34H14A3.5 3.5 0 0 1 10.5 30.5V14.5A3.5 3.5 0 0 1 14 11Z"
+            android:fillColor="#0B0F14" />
+        <path
+            android:pathData="M29.43 17.85Q29.43 16.25 30.82 17.04L39.04 21.71Q40.43 22.5 39.04 23.29L30.82 27.96Q29.43 28.75 29.43 27.15Z"
+            android:fillColor="#FF5252" />
+        <path
+            android:pathData="M13 56Q32 31 51 56"
+            android:strokeColor="#4CC2FF" android:strokeWidth="4.5" android:strokeLineCap="round" />
+        <path
+            android:pathData="M8.75 56A4.25 4.25 0 1 0 17.25 56A4.25 4.25 0 1 0 8.75 56Z"
+            android:fillColor="#4CC2FF" />
+        <path
+            android:pathData="M46.75 56A4.25 4.25 0 1 0 55.25 56A4.25 4.25 0 1 0 46.75 56Z"
+            android:fillColor="#4CC2FF" />
+        <path
+            android:pathData="M28 39.5A4 4 0 1 0 36 39.5A4 4 0 1 0 28 39.5Z"
+            android:fillColor="#FF5252" android:strokeColor="#0B0F14" android:strokeWidth="2.2" />
+    </group>
+</vector>

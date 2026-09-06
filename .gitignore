@@ -1,0 +1,30 @@
+# --- Secrets / signing (NEVER commit) ---
+keystore.properties
+*.jks
+*.keystore
+upload-keystore.jks
+
+# --- Android / Gradle ---
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.cxx/
+android/local.properties
+*.apk
+*.aab
+*.ap_
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- Tooling / graph ---
+graphify-out/
+
+# --- OS / IDE ---
+.DS_Store
+.idea/
+*.iml
+.vscode/

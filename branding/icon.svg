@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Android TV HA Bridge">
+  <title>Android TV HA Bridge</title>
+  <path d="M28 0H100A28 28 0 0 1 128 28V100A28 28 0 0 1 100 128H28A28 28 0 0 1 0 100V28A28 28 0 0 1 28 0Z" fill="#0B0F14"/>
+  <g transform="translate(16 14.8) scale(1.5)">
+    <path d="M13.5 6.5H50.5A7.5 7.5 0 0 1 58 14V31A7.5 7.5 0 0 1 50.5 38.5H13.5A7.5 7.5 0 0 1 6 31V14A7.5 7.5 0 0 1 13.5 6.5Z" fill="#FFFFFF"/>
+    <path d="M14 11H50A3.5 3.5 0 0 1 53.5 14.5V30.5A3.5 3.5 0 0 1 50 34H14A3.5 3.5 0 0 1 10.5 30.5V14.5A3.5 3.5 0 0 1 14 11Z" fill="#0B0F14"/>
+    <path d="M29.43 17.85Q29.43 16.25 30.82 17.04L39.04 21.71Q40.43 22.5 39.04 23.29L30.82 27.96Q29.43 28.75 29.43 27.15Z" fill="#FF5252"/>
+    <path d="M13 56Q32 31 51 56" fill="none" stroke="#4CC2FF" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M8.75 56A4.25 4.25 0 1 0 17.25 56A4.25 4.25 0 1 0 8.75 56Z" fill="#4CC2FF"/>
+    <path d="M46.75 56A4.25 4.25 0 1 0 55.25 56A4.25 4.25 0 1 0 46.75 56Z" fill="#4CC2FF"/>
+    <path d="M28 39.5A4 4 0 1 0 36 39.5A4 4 0 1 0 28 39.5Z" fill="#FF5252" stroke="#0B0F14" stroke-width="2.2"/>
+  </g>
+</svg>

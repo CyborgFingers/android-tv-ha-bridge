@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="40dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/onboarding_title"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:paddingBottom="8dp" />
+
+        <!-- Onboarding: the three native permission grants -->
+        <LinearLayout
+            android:id="@+id/onboarding"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/onboarding_subtitle"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:paddingBottom="24dp" />
+
+            <Button
+                android:id="@+id/grantNotifButton"
+                android:layout_width="320dp"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="@string/grant_notif" />
+
+            <Button
+                android:id="@+id/grantTvButton"
+                android:layout_width="320dp"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="@string/grant_tv" />
+
+            <Button
+                android:id="@+id/grantA11yButton"
+                android:layout_width="320dp"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:text="@string/grant_a11y" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/onboarding_hint"
+                android:textSize="13sp"
+                android:alpha="0.7"
+                android:gravity="center" />
+        </LinearLayout>
+
+        <!-- Pairing: shown once all permissions are granted -->
+        <LinearLayout
+            android:id="@+id/pairing"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pair_title"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:layout_width="360dp"
+                android:layout_height="wrap_content"
+                android:text="@string/pair_instructions"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:paddingBottom="16dp" />
+
+            <TextView
+                android:id="@+id/codeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="000000"
+                android:textSize="52sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.2"
+                android:paddingBottom="16dp" />
+
+            <ImageView
+                android:id="@+id/qrImage"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
+                android:layout_marginBottom="16dp"
+                android:contentDescription="@string/pair_title" />
+
+            <TextView
+                android:id="@+id/pairedText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pair_waiting"
+                android:textSize="15sp"
+                android:paddingBottom="16dp" />
+
+            <Button
+                android:id="@+id/newCodeButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pair_new_code" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

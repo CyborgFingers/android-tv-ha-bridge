@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">Android TV HA Bridge</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Android TV HA Bridge</string>
+    <string name="onboarding_subtitle">Shows what this TV is playing in Home Assistant, and lets it control the TV.</string>
+    <string name="grant_notif">1. Allow notification access</string>
+    <string name="grant_notif_done">1. Notification access ✓</string>
+    <string name="grant_tv">2. Allow TV info access</string>
+    <string name="grant_tv_done">2. TV info access ✓</string>
+    <string name="grant_a11y">3. Allow remote control</string>
+    <string name="grant_a11y_done">3. Remote control ✓</string>
+    <string name="onboarding_hint">Grant the permissions above, then this screen shows a pairing code for Home Assistant.</string>
+    <string name="a11y_description">Lets Home Assistant press D-pad, OK, Back and Home on this TV. Reads nothing from the screen.</string>
+
+    <!-- Pairing -->
+    <string name="pair_title">Pair with Home Assistant</string>
+    <string name="pair_instructions">In Home Assistant, add the “Android TV HA Bridge” integration — it finds this TV automatically. When asked, enter this code:</string>
+    <string name="pair_new_code">New code</string>
+    <string name="pair_waiting">Waiting for Home Assistant…</string>
+    <string name="pair_done">Paired ✓</string>
+</resources>

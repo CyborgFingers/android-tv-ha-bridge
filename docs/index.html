@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Android TV HA Bridge — See what's on. Take the remote.</title>
+<meta name="description" content="Now-playing and native control for Android TV / Google TV inside Home Assistant. 100% local, no ADB, no cloud. Open source by Josh McNabb.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0B0F14">
+<meta property="og:title" content="Android TV HA Bridge">
+<meta property="og:description" content="See what's on. Take the remote. Now-playing and native control for Android TV, inside Home Assistant — 100% local.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22%3E%3Cpath d=%22M28 0H100A28 28 0 0 1 128 28V100A28 28 0 0 1 100 128H28A28 28 0 0 1 0 100V28A28 28 0 0 1 28 0Z%22 fill=%22%230B0F14%22/%3E%3Cg transform=%22translate(16 14.8) scale(1.5)%22%3E%3Cpath d=%22M13.5 6.5H50.5A7.5 7.5 0 0 1 58 14V31A7.5 7.5 0 0 1 50.5 38.5H13.5A7.5 7.5 0 0 1 6 31V14A7.5 7.5 0 0 1 13.5 6.5Z%22 fill=%22%23FFFFFF%22/%3E%3Cpath d=%22M14 11H50A3.5 3.5 0 0 1 53.5 14.5V30.5A3.5 3.5 0 0 1 50 34H14A3.5 3.5 0 0 1 10.5 30.5V14.5A3.5 3.5 0 0 1 14 11Z%22 fill=%22%230B0F14%22/%3E%3Cpath d=%22M29.43 17.85Q29.43 16.25 30.82 17.04L39.04 21.71Q40.43 22.5 39.04 23.29L30.82 27.96Q29.43 28.75 29.43 27.15Z%22 fill=%22%23FF5252%22/%3E%3Cpath d=%22M13 56Q32 31 51 56%22 fill=%22none%22 stroke=%22%234CC2FF%22 stroke-width=%224.5%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M8.75 56A4.25 4.25 0 1 0 17.25 56A4.25 4.25 0 1 0 8.75 56Z%22 fill=%22%234CC2FF%22/%3E%3Cpath d=%22M46.75 56A4.25 4.25 0 1 0 55.25 56A4.25 4.25 0 1 0 46.75 56Z%22 fill=%22%234CC2FF%22/%3E%3Cpath d=%22M28 39.5A4 4 0 1 0 36 39.5A4 4 0 1 0 28 39.5Z%22 fill=%22%23FF5252%22 stroke=%22%230B0F14%22 stroke-width=%222.2%22/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+  /* ---- brand tokens (branding/BRAND.md) ---- */
+  :root {
+    --ink-950:#0B0F14; --ink-900:#141A22; --ink-800:#1C2430; --ink-700:#2A3441;
+    --ink-500:#5B6675; --ink-300:#AAB3BF; --ink-100:#E4E7EC; --paper:#F7F7F9; --white:#FFFFFF;
+    --coral-400:#FF5252; --coral-600:#D63037; --coral-700:#B8242B;
+    --signal-400:#4CC2FF; --signal-600:#177FBF; --signal-700:#0E6FAB;
+
+    --bg:var(--paper); --surface:var(--white); --border:var(--ink-100);
+    --text:var(--ink-950); --muted:var(--ink-500);
+    --accent:var(--coral-400); --accent-text:var(--coral-600); --accent-hover:var(--coral-700);
+    --link:var(--signal-700); --bridge:var(--signal-600);
+    --code-bg:#EEF0F4; --shadow:0 12px 40px rgba(11,15,20,.10);
+    --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:var(--ink-950); --surface:var(--ink-900); --border:var(--ink-800);
+      --text:var(--white); --muted:var(--ink-300);
+      --accent-text:var(--coral-400); --accent-hover:#FF6B6B;
+      --link:var(--signal-400); --bridge:var(--signal-400);
+      --code-bg:#0F141B; --shadow:0 12px 40px rgba(0,0,0,.45);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font);
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 3px solid var(--signal-400); outline-offset: 3px; border-radius: 6px; }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+  h2 { font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem); font-weight: 800; }
+  h3 { font-size: 1.05rem; font-weight: 700; }
+  p { margin: 0; }
+  code { font-family: var(--mono); font-size: .9em; background: var(--code-bg); padding: .1em .4em; border-radius: 6px; overflow-wrap: anywhere; }
+  pre { margin: 0; background: var(--ink-950); color: #E4E7EC; border-radius: 14px; padding: 18px 20px;
+    overflow-x: auto; font: 13.5px/1.55 var(--mono); border: 1px solid var(--ink-800); }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 72px 0; }
+  .eyebrow { display: inline-block; font-size: .78rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--bridge); margin-bottom: 14px; }
+  .lead { color: var(--muted); font-size: 1.1rem; max-width: 60ch; }
+  .muted { color: var(--muted); }
+  .kicker { margin-top: 10px; color: var(--muted); max-width: 62ch; }
+
+  /* ---- nav ---- */
+  .nav { position: sticky; top: 0; z-index: 10; backdrop-filter: saturate(160%) blur(12px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--border); }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; color: var(--text); font-weight: 700; letter-spacing: -0.01em; }
+  .brand:hover { text-decoration: none; }
+  .brand .mark { width: 34px; height: 34px; }
+  .brand small { display: block; font-size: .68rem; font-weight: 600; letter-spacing: .14em; color: var(--muted); line-height: 1.1; }
+  .nav nav { display: flex; gap: 22px; font-weight: 500; font-size: .95rem; }
+  .nav nav a { color: var(--text); }
+  @media (max-width: 640px) { .nav nav a:not(.gh) { display: none; } }
+
+  /* ---- buttons ---- */
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 13px 22px; border-radius: 12px; font-weight: 600;
+    font-size: 1rem; border: 1px solid transparent; transition: transform .06s ease, background .15s ease; }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary { background: var(--coral-400); color: var(--white); box-shadow: 0 8px 24px rgba(255,82,82,.28); }
+  .btn-primary:hover { background: #FF6B6B; }
+  .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .btn-secondary:hover { border-color: var(--muted); }
+  .btn svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+
+  /* ---- hero ---- */
+  .hero { padding: 88px 0 72px; position: relative; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(60% 50% at 0% 100%, rgba(255,82,82,.16), transparent 70%),
+      radial-gradient(50% 45% at 100% 0%, rgba(76,194,255,.16), transparent 70%); }
+  .hero .wrap { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+  @media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; gap: 40px; } .hero { padding-top: 56px; } }
+  .hero .mark-lg { width: 96px; height: 96px; margin-bottom: 24px; display: block; }
+  .hero h1 { font-size: clamp(2.5rem, 1.6rem + 4vw, 4.4rem); font-weight: 800; letter-spacing: -0.035em; }
+  .hero h1 .accent { color: var(--accent-text); }
+  .hero .lead { margin-top: 22px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+  .chip { font-size: .8rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid; }
+  .chip.blue { color: var(--bridge); border-color: color-mix(in srgb, var(--bridge) 45%, transparent); }
+  .chip.coral { color: var(--accent-text); border-color: color-mix(in srgb, var(--coral-400) 45%, transparent); }
+
+  /* ---- TV frame card mockup ---- */
+  .tvcard { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; overflow: hidden;
+    box-shadow: var(--shadow); font-size: 14px; max-width: 460px; margin: 0 auto; width: 100%; }
+  .frame { position: relative; aspect-ratio: 16/9; color: #fff; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 14px 16px; background:
+      linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,.85) 100%),
+      radial-gradient(70% 90% at 78% 20%, #5b3a9a 0%, #2b3a7a 45%, #0e1a3a 100%); }
+  .frame .app { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; opacity: .92; display: flex; gap: 8px; align-items: center; }
+  .frame .live { color: var(--coral-400); font-weight: 800; }
+  .frame .title { font-size: 1.25rem; font-weight: 700; line-height: 1.15; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  .frame .sub { opacity: .9; margin-top: 2px; }
+  .bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.25); margin: 10px 0 4px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 58%; background: var(--coral-400); border-radius: 2px; }
+  .times { display: flex; justify-content: space-between; font-size: .72rem; opacity: .85; font-variant-numeric: tabular-nums; }
+  .upnext { padding: 9px 16px; font-size: .82rem; color: var(--muted); border-top: 1px solid var(--border); }
+  .upnext b { color: var(--text); font-weight: 600; }
+  .controls { display: grid; gap: 8px; padding: 12px 16px 16px; }
+  .row { display: flex; justify-content: center; gap: 8px; }
+  .k { width: 40px; height: 40px; border-radius: 10px; background: var(--code-bg); display: inline-flex; align-items: center; justify-content: center; }
+  .k svg { width: 20px; height: 20px; fill: var(--text); }
+  .k.pp { background: var(--coral-400); } .k.pp svg { fill: #fff; }
+  .dpad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; justify-content: center; }
+  .k.ok { border-radius: 50%; background: var(--coral-400); color: #fff; font-weight: 700; font-size: .8rem; }
+  .sp { visibility: hidden; }
+
+  /* ---- steps ---- */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 36px; }
+  @media (max-width: 800px) { .steps { grid-template-columns: 1fr; } }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .step .n { width: 36px; height: 36px; border-radius: 10px; background: var(--ink-950); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; margin-bottom: 14px; }
+  @media (prefers-color-scheme: dark) { .step .n { background: var(--coral-400); } }
+  .step p { color: var(--muted); margin-top: 6px; font-size: .95rem; }
+
+  /* ---- features ---- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px; margin-top: 36px; }
+  .feat { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+  .feat .ic { width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--coral-400) 12%, transparent); }
+  .feat .ic svg { width: 24px; height: 24px; fill: none; stroke: var(--accent-text); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .feat .ic.blue { background: color-mix(in srgb, var(--signal-400) 14%, transparent); } .feat .ic.blue svg { stroke: var(--bridge); }
+  .feat p { color: var(--muted); font-size: .95rem; }
+  .feat .star { font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); }
+
+  /* ---- screens ---- */
+  .screens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 36px; align-items: start; }
+  @media (max-width: 900px) { .screens { grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto; } }
+  .screens > * { min-width: 0; }
+  .shot { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+  .shot figcaption { font-size: .9rem; color: var(--muted); text-align: center; }
+  .tv { background: #06080c; border-radius: 14px; border: 1px solid var(--ink-700); aspect-ratio: 16/9; color: #fff; padding: 18px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; box-shadow: var(--shadow); }
+  .tv .t { font-weight: 700; font-size: .95rem; }
+  .tv .code { font-size: 1.9rem; font-weight: 800; letter-spacing: .18em; font-variant-numeric: tabular-nums; }
+  .tv .qr { display: grid; grid-template-columns: repeat(7, 6px); gap: 2px; }
+  .tv .qr i { width: 6px; height: 6px; background: #fff; border-radius: 1px; }
+  .tv .qr i.o { background: transparent; }
+  .tv .w { font-size: .72rem; color: var(--ink-300); }
+  .ha { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; font-size: .85rem; }
+  .ha .hd { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .ha .hd .dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; }
+  .ha ul { list-style: none; margin: 0; padding: 6px 0; }
+  .ha li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 14px; }
+  .ha li code { font-size: .78rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ha li span { color: var(--muted); white-space: nowrap; }
+
+  /* ---- apps ---- */
+  .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 18px; margin-top: 30px; }
+  .lvl { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .lvl h3 { display: flex; align-items: center; gap: 8px; }
+  .lvl .tag { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--bridge); }
+  .lvl p { color: var(--muted); font-size: .9rem; margin: 6px 0 12px; }
+  .lvl .list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .lvl .list span { font-size: .82rem; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: var(--code-bg); }
+
+  /* ---- install ---- */
+  .install { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: start; margin-top: 36px; }
+  @media (max-width: 900px) { .install { grid-template-columns: 1fr; } }
+  .install ol { padding-left: 22px; margin: 0; display: grid; gap: 14px; }
+  .install li::marker { font-weight: 700; color: var(--accent-text); }
+  .install .badge { margin: 14px 0 0; display: block; }
+  .install .badge img { display: block; max-width: 100%; height: auto; }
+  .perm { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  .perm div { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; padding: 12px 16px; font-size: .92rem; border-top: 1px solid var(--border); }
+  .perm div:first-child { border-top: 0; font-weight: 700; background: var(--code-bg); }
+  .perm div span:last-child { color: var(--muted); }
+
+  /* ---- dev ---- */
+  .dev { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; margin-top: 30px; }
+  .dev > *, .install > *, .hero .wrap > * { min-width: 0; } /* let the code block scroll instead of widening its grid track */
+  @media (max-width: 900px) { .dev { grid-template-columns: 1fr; } }
+
+  /* ---- footer ---- */
+  footer { background: var(--ink-950); color: var(--ink-300); padding: 56px 0 40px; border-top: 1px solid var(--ink-800); }
+  footer .wrap { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; }
+  @media (max-width: 720px) { footer .wrap { grid-template-columns: 1fr; } }
+  footer a { color: var(--signal-400); }
+  footer .brand { color: #fff; }
+  footer .brand small { color: var(--ink-300); }
+  footer .fine { font-size: .82rem; margin-top: 10px; max-width: 70ch; }
+  footer .links { display: flex; gap: 18px; font-weight: 500; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 64 64">
+    <path d="M13.5 6.5H50.5A7.5 7.5 0 0 1 58 14V31A7.5 7.5 0 0 1 50.5 38.5H13.5A7.5 7.5 0 0 1 6 31V14A7.5 7.5 0 0 1 13.5 6.5Z" fill="var(--mark-fg, #fff)"/>
+    <path d="M14 11H50A3.5 3.5 0 0 1 53.5 14.5V30.5A3.5 3.5 0 0 1 50 34H14A3.5 3.5 0 0 1 10.5 30.5V14.5A3.5 3.5 0 0 1 14 11Z" fill="var(--mark-bg, #0B0F14)"/>
+    <path d="M29.43 17.85Q29.43 16.25 30.82 17.04L39.04 21.71Q40.43 22.5 39.04 23.29L30.82 27.96Q29.43 28.75 29.43 27.15Z" fill="#FF5252"/>
+    <path d="M13 56Q32 31 51 56" fill="none" stroke="var(--mark-bridge, #4CC2FF)" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M8.75 56A4.25 4.25 0 1 0 17.25 56A4.25 4.25 0 1 0 8.75 56Z" fill="var(--mark-bridge, #4CC2FF)"/>
+    <path d="M46.75 56A4.25 4.25 0 1 0 55.25 56A4.25 4.25 0 1 0 46.75 56Z" fill="var(--mark-bridge, #4CC2FF)"/>
+    <path d="M28 39.5A4 4 0 1 0 36 39.5A4 4 0 1 0 28 39.5Z" fill="#FF5252" stroke="var(--mark-bg, #0B0F14)" stroke-width="2.2"/>
+  </symbol>
+  <symbol id="tile" viewBox="0 0 128 128">
+    <path d="M28 0H100A28 28 0 0 1 128 28V100A28 28 0 0 1 100 128H28A28 28 0 0 1 0 100V28A28 28 0 0 1 28 0Z" fill="#0B0F14"/>
+    <use href="#mark" x="16" y="14.8" width="96" height="96"/>
+  </symbol>
+</svg>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Android TV HA Bridge — home">
+      <svg class="mark" aria-hidden="true"><use href="#tile"/></svg>
+      <span><small>ANDROID TV</small>HA Bridge</span>
+    </a>
+    <nav aria-label="Site">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#developers">Developers</a>
+      <a class="gh" href="https://github.com/CyborgFingers/android-tv-ha-bridge">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <svg class="mark-lg" role="img" aria-label="Android TV HA Bridge mark"><use href="#tile"/></svg>
+        <span class="eyebrow">Android TV · Home Assistant</span>
+        <h1>See what's on.<br><span class="accent">Take the remote.</span></h1>
+        <p class="lead">Now-playing and native control for Android TV / Google TV, inside Home Assistant. Title, episode, poster and progress — and play / pause, D-pad and app launch — over an encrypted local API. No ADB, no cloud, no account.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=CyborgFingers&amp;repository=android-tv-ha-bridge&amp;category=integration">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 2 11h3v9h6v-6h2v6h6v-9h3L12 2zm0 2.7 6 5.4V18h-2v-6H8v6H6V10.1l6-5.4z"/></svg>
+            Add to Home Assistant
+          </a>
+          <a class="btn btn-secondary" href="https://github.com/CyborgFingers/android-tv-ha-bridge">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+        <div class="chips" aria-label="Highlights">
+          <span class="chip blue">100% local</span>
+          <span class="chip coral">No ADB</span>
+          <span class="chip blue">Native control</span>
+          <span class="chip coral">Works with HACS</span>
+          <span class="chip blue">Multiple TVs</span>
+        </div>
+      </div>
+
+      <div class="tvcard" role="img" aria-label="Mockup of the TV frame card: Shortland Street playing on TVNZ+, 24:10 of 41:30, with transport controls and a D-pad">
+        <div class="frame">
+          <div class="app"><span class="live">● LIVE</span><span>TVNZ+</span></div>
+          <div>
+            <div class="title">Shortland Street</div>
+            <div class="sub">Episode 7,482</div>
+            <div class="bar"><span></span></div>
+            <div class="times"><span>24:10</span><span>41:30</span></div>
+          </div>
+        </div>
+        <div class="upnext">Up next <b>Episode 7,483</b></div>
+        <div class="controls" aria-hidden="true">
+          <div class="row">
+            <span class="k"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></span>
+            <span class="k pp"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></span>
+            <span class="k"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></span>
+          </div>
+          <div class="dpad">
+            <span class="sp"></span><span class="k"><svg viewBox="0 0 24 24"><path d="M12 8l6 6H6z"/></svg></span><span class="sp"></span>
+            <span class="k"><svg viewBox="0 0 24 24"><path d="M8 12l6-6v12z"/></svg></span><span class="k ok">OK</span><span class="k"><svg viewBox="0 0 24 24"><path d="M16 12l-6 6V6z"/></svg></span>
+            <span class="k"><svg viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg></span><span class="k"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></span><span class="k"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <span class="eyebrow">How it works</span>
+      <h2>One app on the TV. One integration in Home Assistant.</h2>
+      <p class="kicker">The app reads what's playing and exposes it — with native control — over a local API. Home Assistant finds the TV on your network, you pair with a code, and every box becomes a proper device.</p>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><h3>Install the app on the TV</h3><p>Grant three normal Android permissions: notification access (now-playing), TV info (Watch Next) and accessibility (remote keys). No developer options, no ADB keys, no root.</p></div>
+        <div class="step"><span class="n">2</span><h3>Pair with a code</h3><p>Home Assistant discovers the TV over mDNS. Enter the 6-digit code — or scan the QR — shown on screen. The TV's certificate fingerprint is pinned from that moment on.</p></div>
+        <div class="step"><span class="n">3</span><h3>Automate</h3><p>Each TV is a device with a <code>media_player</code>, a <code>remote</code> and sensors. State is pushed the moment it changes. Add the bundled TV frame card and you're done.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <span class="eyebrow">Features</span>
+      <h2>Everything a TV should tell your home — and everything it should obey.</h2>
+      <div class="grid">
+        <div class="feat">
+          <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2.5"/><path d="M10 8.5v4l3.5-2z"/><path d="M8 21h8"/></svg></span>
+          <h3>What's playing, properly</h3>
+          <p>Title, series and episode, poster, position and duration, playback state and the current app — straight from the Android MediaSession.</p>
+        </div>
+        <div class="feat">
+          <span class="ic blue"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2.5"/><path d="M7 21h10M12 9l3 3-3 3M8 12h7"/></svg></span>
+          <span class="star">The standout</span>
+          <h3>Titles even for apps that hide them</h3>
+          <p>Reads the Android TV <em>Watch Next</em> row to recover show, episode and poster for apps that publish no media metadata at all — TVNZ+ and ThreeNow, for example.</p>
+        </div>
+        <div class="feat">
+          <span class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="3"/><circle cx="12" cy="9" r="2"/><path d="M12 14v1M9 17h6"/></svg></span>
+          <h3>Native control, no ADB</h3>
+          <p>Play / pause / seek and volume through <code>MediaController</code>; D-pad, OK, Back and Home through a tiny accessibility service; app launch and deep links through intents.</p>
+        </div>
+        <div class="feat">
+          <span class="ic blue"><svg viewBox="0 0 24 24"><path d="M4 16a8 8 0 0 1 16 0"/><circle cx="4" cy="16" r="1.5"/><circle cx="20" cy="16" r="1.5"/><circle cx="12" cy="8" r="1.5"/><path d="M12 20v-6"/></svg></span>
+          <h3>Plug-and-play pairing</h3>
+          <p>mDNS discovery, a 6-digit code or QR, and a friendly name. Pair as many TVs as you like — each is its own device in Home Assistant.</p>
+        </div>
+        <div class="feat">
+          <span class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3"/></svg></span>
+          <h3>Encrypted local API</h3>
+          <p>TLS 1.3 with the TV's certificate fingerprint pinned at pairing, plus a paired token on every request. Nothing leaves your LAN. No cloud, no account, no telemetry.</p>
+        </div>
+        <div class="feat">
+          <span class="ic blue"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 12h18M12 12v9"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span>
+          <h3>Sensors and a card, included</h3>
+          <p>Current app, up next, battery, storage, memory, volume, network, IP, Wi-Fi and last boot. Plus the <em>TV frame</em> Lovelace card, registered automatically.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="wrap">
+      <span class="eyebrow">In practice</span>
+      <h2>Pair on the TV, see it in Home Assistant, control it from the card.</h2>
+      <div class="screens">
+        <figure class="shot">
+          <div class="tv" role="img" aria-label="Mockup of the pairing screen on the TV showing a 6-digit code and a QR code">
+            <div class="t">Pair with Home Assistant</div>
+            <div class="code">482 913</div>
+            <div class="qr" aria-hidden="true">
+              <i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i>
+              <i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i>
+              <i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i>
+              <i class="o"></i><i class="o"></i><i class="o"></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i>
+              <i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i>
+              <i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i>
+              <i></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i>
+            </div>
+            <div class="w">Waiting for Home Assistant…</div>
+          </div>
+          <figcaption>Pairing on the TV</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="ha" role="img" aria-label="Mockup of the device page in Home Assistant listing the media player, remote and sensor entities of Bedroom TV">
+            <div class="hd"><span class="dot"></span>Bedroom TV</div>
+            <ul>
+              <li><code>media_player.bedroom_tv</code><span>Playing</span></li>
+              <li><code>remote.bedroom_tv</code><span>On</span></li>
+              <li><code>sensor.bedroom_tv_current_app</code><span>TVNZ+</span></li>
+              <li><code>sensor.bedroom_tv_up_next</code><span>Episode 7,483</span></li>
+              <li><code>sensor.bedroom_tv_wifi_signal</code><span>−52 dBm</span></li>
+              <li><code>sensor.bedroom_tv_storage_free</code><span>3.8 GB</span></li>
+            </ul>
+          </div>
+          <figcaption>The device in Home Assistant</figcaption>
+        </figure>
+        <figure class="shot">
+          <div class="tvcard" style="max-width:none" role="img" aria-label="Mockup of the TV frame card in its idle state, with Up next shown">
+            <div class="frame" style="background:radial-gradient(70% 90% at 70% 30%, #1c2430 0%, #0b0f14 100%); align-items:center; justify-content:center">
+              <div style="text-align:center; opacity:.7"><div style="font-weight:700">Bedroom TV</div><div style="font-size:.85rem">Idle</div></div>
+            </div>
+            <div class="upnext">Up next <b>Shortland Street — Episode 7,483</b></div>
+            <div class="controls" aria-hidden="true">
+              <div class="row">
+                <span class="k"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></span>
+                <span class="k pp"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+                <span class="k"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></span>
+              </div>
+            </div>
+          </div>
+          <figcaption>The TV frame card</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="apps">
+    <div class="wrap">
+      <span class="eyebrow">Supported media apps</span>
+      <h2>Most apps just work. The awkward ones get special treatment.</h2>
+      <div class="apps">
+        <div class="lvl"><h3><span class="tag">Full</span>Now-playing</h3><p>Title, artist, thumbnail, progress — any app with a standard MediaSession.</p><div class="list"><span>YouTube</span><span>SmartTube</span><span>Jellyfin</span><span>Plex</span><span>Spotify</span><span>VLC</span><span>Kodi</span><span>ExoPlayer apps</span></div></div>
+        <div class="lvl"><h3><span class="tag">Recovered</span>Watch Next</h3><p>Show, episode and poster via the Android TV Watch-Next provider, for apps that publish no media metadata.</p><div class="list"><span>TVNZ+</span><span>ThreeNow</span><span>…and similar</span></div></div>
+        <div class="lvl"><h3><span class="tag">State</span>State only</h3><p>State, progress and app name where the app restricts metadata — and as the fallback for everything else.</p><div class="list"><span>Netflix</span><span>Prime Video</span><span>Any other app</span></div></div>
+        <div class="lvl"><h3><span class="tag">Always</span>Control</h3><p>Play / pause, D-pad, OK, Back, Home and app launch work regardless of what's on screen.</p><div class="list"><span>Any app</span></div></div>
+      </div>
+      <p class="kicker">Found an app that behaves differently? <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/issues">Open an issue</a> — compatibility reports are the most useful thing you can send.</p>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <span class="eyebrow">Install</span>
+      <h2>Three steps, ten minutes.</h2>
+      <div class="install">
+        <ol>
+          <li><strong>The app, on your TV.</strong> Install Android TV HA Bridge on the Android TV / Google TV device, open it and follow the on-screen steps. Until the Google Play listing is live, sideload the APK from <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/releases">Releases</a>.</li>
+          <li><strong>The integration, via HACS.</strong> Click the button, or add <code>https://github.com/CyborgFingers/android-tv-ha-bridge</code> as a custom repository (category <em>Integration</em>). Install, then restart Home Assistant. Manual install: copy <code>custom_components/androidtv_ha_bridge/</code> into your <code>config/custom_components/</code>.
+            <a class="badge" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=CyborgFingers&amp;repository=android-tv-ha-bridge&amp;category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open this repository inside the Home Assistant Community Store." loading="lazy"></a>
+          </li>
+          <li><strong>Pair.</strong> Home Assistant discovers the TV → <em>Configure</em> → enter the 6-digit code → name it. Repeat for every TV.</li>
+        </ol>
+        <div class="perm" role="table" aria-label="Permissions the app asks for">
+          <div role="row"><span role="columnheader">Permission</span><span role="columnheader">Why</span></div>
+          <div role="row"><span role="cell">Notification access</span><span role="cell">Read the active MediaSession — what's playing</span></div>
+          <div role="row"><span role="cell">TV info (<code>READ_TV_LISTINGS</code>)</span><span role="cell">Read the Watch Next row</span></div>
+          <div role="row"><span role="cell">Accessibility</span><span role="cell">Send D-pad / OK / Back / Home. Reads nothing from the screen</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="developers">
+    <div class="wrap">
+      <span class="eyebrow">For developers</span>
+      <h2>The data is exposed generically.</h2>
+      <div class="dev">
+        <div>
+          <p class="lead">A Home Assistant event you can subscribe to from another integration, plus a small documented local API — <code>/api/info</code>, <code>/api/pair</code>, <code>/api/state</code>, <code>/api/command</code>, <code>/api/apps</code> and a WebSocket that pushes the full state document. Nothing is locked to the bundled card.</p>
+          <p class="kicker"><a href="https://github.com/CyborgFingers/android-tv-ha-bridge/blob/main/PROTOCOL.md">Read PROTOCOL.md →</a> &nbsp;·&nbsp; <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/blob/main/branding/BRAND.md">Brand assets →</a></p>
+        </div>
+<pre><code>automation:
+  - alias: "Pause the bedroom TV when the doorbell rings"
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.front_doorbell
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: media_player.bedroom_tv
+        state: playing
+    actions:
+      - action: media_player.media_pause
+        target:
+          entity_id: media_player.bedroom_tv</code></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="brand" href="#top"><svg class="mark" aria-hidden="true"><use href="#tile"/></svg><span><small>ANDROID TV</small>HA Bridge</span></a>
+      <p class="fine">Made by <a href="https://github.com/CyborgFingers">Josh McNabb</a>. Source-available under the <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/blob/main/LICENSE">PolyForm Noncommercial License 1.0.0</a> — free for personal and other non-commercial use; commercial use by arrangement with the author.</p>
+      <p class="fine">© 2026 Josh McNabb. Android TV and Google TV are trademarks of Google LLC; Home Assistant is a trademark of the Open Home Foundation. Not affiliated with either.</p>
+    </div>
+    <div class="links">
+      <a href="https://github.com/CyborgFingers/android-tv-ha-bridge">GitHub</a>
+      <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/releases">Releases</a>
+      <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/issues">Issues</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
