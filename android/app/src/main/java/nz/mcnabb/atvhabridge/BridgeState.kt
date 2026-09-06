@@ -66,6 +66,8 @@ object BridgeState {
                 put("title", s.title ?: JSONObject.NULL)
                 put("series_title", s.seriesTitle ?: JSONObject.NULL)
                 put("episode_title", s.episodeTitle ?: JSONObject.NULL)
+                put("season", s.season ?: JSONObject.NULL)
+                put("episode", s.episode ?: JSONObject.NULL)
                 put("artist", s.artist ?: JSONObject.NULL)
                 if (s.durationMs > 0) put("duration", s.durationMs / 1000)
                 put("position", s.positionMs / 1000)

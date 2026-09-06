@@ -79,6 +79,14 @@ class BridgeMediaPlayer(BridgeEntity, MediaPlayerEntity):
         return self._np.get("series_title")
 
     @property
+    def media_season(self) -> str | None:
+        return self._np.get("season")
+
+    @property
+    def media_episode(self) -> str | None:
+        return self._np.get("episode")
+
+    @property
     def app_name(self) -> str | None:
         return self._app.get("name")
 

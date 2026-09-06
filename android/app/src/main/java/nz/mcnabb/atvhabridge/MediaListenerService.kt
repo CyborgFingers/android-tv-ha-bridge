@@ -224,13 +224,16 @@ class MediaListenerService : NotificationListenerService() {
         var title = mediaTitle
         var series: String? = null
         var episode: String? = null
+        var season: String? = null
+        var episodeNum: String? = null
         var posterUrl: String? = null
         if (mediaTitle.isNullOrBlank()) {
             WatchNextResolver.resolve(contentResolver, controller.packageName)?.let { wn ->
                 val (s, e) = orderSeriesEpisode(wn.title, wn.episodeTitle)
                 series = s; episode = e
+                season = wn.season; episodeNum = wn.episode
                 title = listOfNotNull(s, e).joinToString(" — ").ifBlank { null }
-                posterUrl = wn.posterUri?.takeIf { it.startsWith("http") }
+                posterUrl = wn.posterUri // http OR content:// — ArtResolver fetches both
             }
         }
 
@@ -247,6 +250,8 @@ class MediaListenerService : NotificationListenerService() {
             title = title,
             seriesTitle = series,
             episodeTitle = episode,
+            season = season,
+            episode = episodeNum,
             artist = artist,
             album = metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM),
             durationMs = durationMs,

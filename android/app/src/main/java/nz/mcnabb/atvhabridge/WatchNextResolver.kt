@@ -23,6 +23,8 @@ object WatchNextResolver {
         val episodeTitle: String?,
         val posterUri: String?,
         val positionMs: Long,
+        val season: String? = null,
+        val episode: String? = null,
     )
 
     /** Best (most-recently-engaged) tile published by [pkg], or null. */
@@ -33,6 +35,7 @@ object WatchNextResolver {
         val cols = arrayOf(
             "package_name", "title", "episode_title", "poster_art_uri",
             "last_engagement_time_utc_millis", "last_playback_position_millis",
+            "season_display_number", "episode_display_number",
         )
         return try {
             cr.query(uri, cols, null, null, null)?.use { c ->
@@ -42,6 +45,8 @@ object WatchNextResolver {
                 val iArt = c.getColumnIndex("poster_art_uri")
                 val iEng = c.getColumnIndex("last_engagement_time_utc_millis")
                 val iPos = c.getColumnIndex("last_playback_position_millis")
+                val iSeason = c.getColumnIndex("season_display_number")
+                val iEpisode = c.getColumnIndex("episode_display_number")
                 var best: Info? = null
                 var bestTime = Long.MIN_VALUE
                 var total = 0
@@ -51,7 +56,12 @@ object WatchNextResolver {
                     val eng = if (iEng >= 0) c.getLong(iEng) else 0L
                     if (eng >= bestTime) {
                         bestTime = eng
-                        best = Info(c.str(iTitle), c.str(iEp), c.str(iArt), if (iPos >= 0) c.getLong(iPos) else 0L)
+                        best = Info(
+                            c.str(iTitle), c.str(iEp), c.str(iArt),
+                            if (iPos >= 0) c.getLong(iPos) else 0L,
+                            c.str(iSeason)?.takeIf { it.isNotBlank() },
+                            c.str(iEpisode)?.takeIf { it.isNotBlank() },
+                        )
                     }
                 }
                 Log.i(TAG, "${uri.lastPathSegment}: total=$total match($pkg)=$best")

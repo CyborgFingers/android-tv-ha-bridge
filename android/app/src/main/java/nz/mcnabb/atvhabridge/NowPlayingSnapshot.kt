@@ -8,6 +8,8 @@ data class NowPlayingSnapshot(
     val title: String?,        // display title (composed "Show — Episode" for Watch-Next apps)
     val seriesTitle: String?,  // show name, when known
     val episodeTitle: String?, // episode / season-episode label, when known
+    val season: String? = null,  // season number/label, when known (Watch-Next)
+    val episode: String? = null, // episode number/label, when known (Watch-Next)
     val artist: String?,
     val album: String?,
     val durationMs: Long,
