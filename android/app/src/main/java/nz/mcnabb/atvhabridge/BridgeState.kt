@@ -33,10 +33,10 @@ object BridgeState {
 
     private val listeners = CopyOnWriteArraySet<(String) -> Unit>()
 
-    /** Subscribe to live JSON pushes; immediately receives the current state. */
+    /** Subscribe to live JSON pushes. The caller sends the initial snapshot itself,
+     *  deferred off the WebSocket handshake (see StateSocket.onOpen). */
     fun addListener(l: (String) -> Unit) {
         listeners.add(l)
-        runCatching { l(currentJson()) }
     }
 
     fun removeListener(l: (String) -> Unit) = listeners.remove(l)

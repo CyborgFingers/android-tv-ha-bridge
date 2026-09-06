@@ -32,7 +32,13 @@ class BridgeServer(
 
     private inner class StateSocket(hs: IHTTPSession) : WebSocket(hs) {
         private val listener: (String) -> Unit = { text -> runCatching { send(text) } }
-        override fun onOpen() = BridgeState.addListener(listener).let { }
+        override fun onOpen() {
+            BridgeState.addListener(listener)
+            // Push the current snapshot AFTER onOpen returns, off a background thread.
+            // Sending during the WebSocket handshake/onOpen drops the connection on
+            // strict clients (aiohttp), so the entity never stays available.
+            Thread { runCatching { Thread.sleep(80); send(BridgeState.currentJson()) } }.start()
+        }
         override fun onClose(code: WebSocketFrame.CloseCode?, reason: String?, remote: Boolean) {
             BridgeState.removeListener(listener)
         }

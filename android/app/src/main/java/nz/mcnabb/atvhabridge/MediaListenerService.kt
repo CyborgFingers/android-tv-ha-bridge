@@ -81,7 +81,10 @@ class MediaListenerService : NotificationListenerService() {
                         if (which == "current") artResolver.bitmap() else null
                     }
                     s.makeSecure(tlsFactory, null)
-                    s.start()
+                    // timeout 0 = no socket read timeout: NanoHTTPD's default 5s would
+                    // close an idle WebSocket between the client's keepalive pings. A
+                    // real disconnect is still detected via EOF. daemon=true as default.
+                    s.start(0, true)
                     server = s
                     bound = p
                     break
