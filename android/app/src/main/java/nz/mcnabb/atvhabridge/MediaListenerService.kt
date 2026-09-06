@@ -216,8 +216,10 @@ class MediaListenerService : NotificationListenerService() {
         val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
             ?: metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
             ?: metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
-        val durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
+        val metaDurationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L
         val adFlag = (metadata?.getLong(METADATA_KEY_ADVERTISEMENT) ?: 0L) != 0L
+        var wnPositionMs = 0L
+        var wnDurationMs = 0L
 
         // Apps like TVNZ+/ThreeNow publish a session with no title/art. Recover the
         // show + episode + poster from the Android TV Watch-Next tile.
@@ -234,6 +236,8 @@ class MediaListenerService : NotificationListenerService() {
                 season = wn.season; episodeNum = wn.episode
                 title = listOfNotNull(s, e).joinToString(" — ").ifBlank { null }
                 posterUrl = wn.posterUri // http OR content:// — ArtResolver fetches both
+                wnPositionMs = wn.positionMs
+                wnDurationMs = wn.durationMs
             }
         }
 
@@ -246,6 +250,11 @@ class MediaListenerService : NotificationListenerService() {
             rawPos + ((SystemClock.elapsedRealtime() - ps.lastPositionUpdateTime) * speed).toLong()
         } else rawPos
 
+        // Apps with an empty session (Jellyfin) report no position/duration — fall back to
+        // the Watch-Next tile's saved position + episode duration so the card shows progress.
+        val durationMs = if (metaDurationMs > 0) metaDurationMs else wnDurationMs
+        val positionMs = (if (livePos > 0) livePos else wnPositionMs).coerceAtLeast(0)
+
         return NowPlayingSnapshot(
             title = title,
             seriesTitle = series,
@@ -255,7 +264,7 @@ class MediaListenerService : NotificationListenerService() {
             artist = artist,
             album = metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM),
             durationMs = durationMs,
-            positionMs = livePos.coerceAtLeast(0),
+            positionMs = positionMs,
             positionUpdatedAt = System.currentTimeMillis(),
             state = playbackStateToString(ps?.state),
             appPackage = controller.packageName,

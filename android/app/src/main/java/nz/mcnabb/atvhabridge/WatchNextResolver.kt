@@ -25,6 +25,7 @@ object WatchNextResolver {
         val positionMs: Long,
         val season: String? = null,
         val episode: String? = null,
+        val durationMs: Long = 0L,
     )
 
     /** Best (most-recently-engaged) tile published by [pkg], or null. */
@@ -35,7 +36,7 @@ object WatchNextResolver {
         val cols = arrayOf(
             "package_name", "title", "episode_title", "poster_art_uri",
             "last_engagement_time_utc_millis", "last_playback_position_millis",
-            "season_display_number", "episode_display_number",
+            "season_display_number", "episode_display_number", "duration_millis",
         )
         return try {
             cr.query(uri, cols, null, null, null)?.use { c ->
@@ -47,6 +48,7 @@ object WatchNextResolver {
                 val iPos = c.getColumnIndex("last_playback_position_millis")
                 val iSeason = c.getColumnIndex("season_display_number")
                 val iEpisode = c.getColumnIndex("episode_display_number")
+                val iDur = c.getColumnIndex("duration_millis")
                 var best: Info? = null
                 var bestTime = Long.MIN_VALUE
                 var total = 0
@@ -61,6 +63,7 @@ object WatchNextResolver {
                             if (iPos >= 0) c.getLong(iPos) else 0L,
                             c.str(iSeason)?.takeIf { it.isNotBlank() },
                             c.str(iEpisode)?.takeIf { it.isNotBlank() },
+                            durationMs = if (iDur >= 0) c.getLong(iDur) else 0L,
                         )
                     }
                 }
