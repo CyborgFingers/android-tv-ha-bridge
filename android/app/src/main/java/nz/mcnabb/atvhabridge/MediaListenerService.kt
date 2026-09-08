@@ -1,6 +1,7 @@
 package nz.mcnabb.atvhabridge
 
 import android.content.ComponentName
+import android.database.ContentObserver
 import android.media.AudioManager
 import android.media.AudioPlaybackConfiguration
 import android.media.MediaMetadata
@@ -91,6 +92,17 @@ class MediaListenerService : NotificationListenerService() {
     private var lastScrapeRefreshMs = 0L
     private val scrapeRefresh = Runnable { lastScrapeRefreshMs = SystemClock.elapsedRealtime(); refresh() }
 
+    /** Republish the moment an app rewrites its Watch-Next row (Jellyfin re-issues its tiles as
+     * episodes finish), so the up-next picks track the provider instead of the next heartbeat.
+     * A rewrite is a burst of row deletes/inserts, hence the short settle before one refresh. */
+    private val watchNextRefresh = Runnable { refresh() }
+    private val watchNextObserver = object : ContentObserver(mainHandler) {
+        override fun onChange(selfChange: Boolean) {
+            mainHandler.removeCallbacks(watchNextRefresh)
+            mainHandler.postDelayed(watchNextRefresh, WATCH_NEXT_SETTLE_MS)
+        }
+    }
+
     /** Republish after an overlay scrape, at most once per SCRAPE_REFRESH_GAP_MS (a per-second
      * scrape while the controls are up must not re-query Watch-Next every tick) — but never
      * dropped: a throttled request is deferred to the end of the gap, so the last read of a
@@ -151,6 +163,8 @@ class MediaListenerService : NotificationListenerService() {
             audioManager = getSystemService(AudioManager::class.java)
             audioManager?.registerAudioPlaybackCallback(audioCallback, mainHandler)
             PlayerScrape.onScrape = { requestScrapeRefresh() }
+            runCatching { contentResolver.registerContentObserver(WatchNextResolver.WATCH_NEXT, true, watchNextObserver) }
+                .onFailure { Log.w(TAG, "watch-next observer not registered: ${it.message}") }
             attachMediaSessions(attempt = 0)
 
             mainHandler.postDelayed(heartbeat, HEARTBEAT_INTERVAL_MS)
@@ -188,12 +202,14 @@ class MediaListenerService : NotificationListenerService() {
             mediaSessionManager?.removeOnActiveSessionsChangedListener(sessionsChangedListener)
             runCatching { audioManager?.unregisterAudioPlaybackCallback(audioCallback) }
             PlayerScrape.onScrape = null
+            runCatching { contentResolver.unregisterContentObserver(watchNextObserver) }
             currentController?.unregisterCallback(controllerCallback)
             currentController = null
             mainHandler.removeCallbacks(heartbeat)
             mainHandler.removeCallbacks(adTick)
             mainHandler.removeCallbacks(scrapeRefresh)
             mainHandler.removeCallbacks(audioSettle)
+            mainHandler.removeCallbacks(watchNextRefresh)
             // Stop each independently so a throw from one (NanoHTTPD.stop can) doesn't
             // skip the rest — especially requestRebind, without which we may not rebind.
             runCatching { discovery?.stop() }; discovery = null
@@ -240,8 +256,8 @@ class MediaListenerService : NotificationListenerService() {
             try {
                 // Up-next picks are independent of play/idle: buildSnapshot clears the
                 // now-playing fields while the user browses, and browsing is exactly when
-                // the picks are useful — so they're resolved here, outside that clear.
-                val upNext = upNextList(controller?.packageName)
+                // the picks are useful — so they're resolved outside that clear, but AFTER
+                // the snapshot, so the item that's playing can be left out of them.
                 if (controller != null) {
                     artResolver.update(controller.metadata)
                     val snap = buildSnapshot(controller)
@@ -249,10 +265,10 @@ class MediaListenerService : NotificationListenerService() {
                     val artUrl = if (artResolver.bitmap() != null) "/art.jpg?v=${artResolver.version}" else null
                     probe(controller)
                     scheduleAdTick(snap.ad)
-                    BridgeState.publish(snap, artUrl, null, null, upNext)
+                    BridgeState.publish(snap, artUrl, null, null, upNextList(controller.packageName, snap))
                 } else {
                     artResolver.update(null)
-                    BridgeState.publish(null, null, null, null, upNext)
+                    BridgeState.publish(null, null, null, null, upNextList(null, null))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "refresh failed: ${e.message}")
@@ -261,12 +277,19 @@ class MediaListenerService : NotificationListenerService() {
     }
 
     /** Up-next picks: the current app's Watch-Next tiles, else the launcher's cross-app
-     * "continue watching" row. Posters are fetched into [ArtResolver] and served as
-     * /art_next_<i>.jpg; a pick only advertises `art` once its poster actually resolved.
+     * "continue watching" row — next episodes first, then by recency, never the item in
+     * [playing] (see [isNowPlaying]). Posters are fetched into [ArtResolver] and served as
+     * /art_next_<i>.jpg; a pick only advertises `art` once its poster actually resolved. The
+     * tiles' launch intents are kept by index for `play_next`.
      * ponytail: re-queries the provider on every refresh (one cursor over a few dozen rows). */
-    private fun upNextList(pkg: String?): List<UpNextItem> {
-        val tiles = pkg?.let { WatchNextResolver.resolveList(contentResolver, it, UP_NEXT_LIMIT) }.orEmpty()
-            .ifEmpty { WatchNextResolver.resolveList(contentResolver, null, UP_NEXT_LIMIT) }
+    private fun upNextList(pkg: String?, playing: NowPlayingSnapshot?): List<UpNextItem> {
+        val skip: (WatchNextResolver.Info) -> Boolean = { t ->
+            val (series, ep) = orderSeriesEpisode(t.title, t.episodeTitle)
+            isNowPlaying(series, ep, t.season, t.episode, playing)
+        }
+        val tiles = pkg?.let { WatchNextResolver.resolveList(contentResolver, it, UP_NEXT_LIMIT, skip) }.orEmpty()
+            .ifEmpty { WatchNextResolver.resolveList(contentResolver, null, UP_NEXT_LIMIT, skip) }
+        Controls.upNextIntents = tiles.map { it.intentUri }
         artResolver.updateUpNext(tiles.map { it.posterUri })
         return tiles.mapIndexed { i, t ->
             val (series, ep) = orderSeriesEpisode(t.title, t.episodeTitle)
@@ -447,6 +470,8 @@ class MediaListenerService : NotificationListenerService() {
         private const val SCRAPE_REFRESH_GAP_MS = 2500L
         // Second overlay read after an audio start/stop, once the app has redrawn its controls.
         private const val AUDIO_SETTLE_MS = 400L
+        // One refresh per burst of Watch-Next row changes (an app rewriting its whole row).
+        private const val WATCH_NEXT_SETTLE_MS = 750L
         // Strips a leading "S6:E13 — " so the episode label composes cleanly with the series.
         private val EP_PREFIX = Regex("""^S\d+:?\s*E\d+\s*[—–-]\s*""")
 

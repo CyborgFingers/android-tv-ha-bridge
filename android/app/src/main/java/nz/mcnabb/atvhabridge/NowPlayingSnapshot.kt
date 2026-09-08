@@ -42,6 +42,19 @@ data class UpNextItem(
     val positionMs: Long,
 )
 
+/** True when a Watch-Next tile (already split into [series] / [episodeTitle]) is the item in
+ * [snap]: the same show plus the same season/episode when the snapshot has numbers, else the
+ * same title. An idle snapshot matches nothing — what was last watched is a fair pick while
+ * the user browses; only what's playing or paused is left out of the up-next picks. */
+fun isNowPlaying(series: String?, episodeTitle: String?, season: String?, episode: String?, snap: NowPlayingSnapshot?): Boolean {
+    if (snap == null || snap.state == "idle") return false
+    val show = snap.seriesTitle ?: snap.title ?: return false
+    val sameShow = series.equals(show, ignoreCase = true)
+    if (snap.season != null || snap.episode != null) return sameShow && season == snap.season && episode == snap.episode
+    return sameShow || episodeTitle.equals(snap.title, ignoreCase = true) ||
+        listOfNotNull(series, episodeTitle).joinToString(" — ").equals(snap.title, ignoreCase = true)
+}
+
 fun playbackStateToString(state: Int?): String = when (state) {
     PlaybackState.STATE_PLAYING -> "playing"
     PlaybackState.STATE_PAUSED -> "paused"
