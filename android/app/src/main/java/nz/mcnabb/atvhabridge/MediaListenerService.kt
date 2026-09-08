@@ -284,29 +284,39 @@ class MediaListenerService : NotificationListenerService() {
         var positionMs = (if (livePos > 0) livePos else wnPositionMs).coerceAtLeast(0)
         var state = playbackStateToString(ps?.state)
 
-        // Generic overlay scrape: for players that publish nothing to their session
-        // (Jellyfin), the accessibility service reads the live position/episode off the
-        // on-screen controls. Prefer it over the lagging Watch-Next tile; the audio signal
-        // (isMusicActive) gives play/pause and projects the position forward between reads.
-        if (mediaTitle.isNullOrBlank() &&
-            PlayerScrape.pkg == controller.packageName &&
-            PlayerScrape.ageMs() < SCRAPE_MAX_AGE_MS
-        ) {
+        if (mediaTitle.isNullOrBlank()) {
+            // Empty-session apps (Jellyfin) sit at STATE_NONE whether watching or just
+            // browsing their menus, so the audio signal (isMusicActive) is the only honest
+            // play/idle indicator for them: audio → playing, else the session's own state.
             val musicActive = runCatching { audioManager?.isMusicActive == true }.getOrDefault(false)
-            PlayerScrape.season?.let { season = it }
-            PlayerScrape.episode?.let { episodeNum = it }
-            PlayerScrape.title?.let { scraped ->
-                EP_PREFIX.replaceFirst(scraped, "").trim().ifBlank { null }?.let { episode = it }
+            if (musicActive) state = "playing"
+
+            // Generic overlay scrape: the accessibility service reads the live
+            // position/episode off the on-screen controls. Prefer it over the lagging
+            // Watch-Next tile, projecting the position forward between reads while playing.
+            if (PlayerScrape.pkg == controller.packageName && PlayerScrape.ageMs() < SCRAPE_MAX_AGE_MS) {
+                PlayerScrape.season?.let { season = it }
+                PlayerScrape.episode?.let { episodeNum = it }
+                PlayerScrape.title?.let { scraped ->
+                    EP_PREFIX.replaceFirst(scraped, "").trim().ifBlank { null }?.let { episode = it }
+                }
+                val composed = listOfNotNull(series, episode).joinToString(" — ")
+                title = when {
+                    composed.isNotBlank() -> composed
+                    !title.isNullOrBlank() -> title
+                    else -> PlayerScrape.title
+                }
+                if (PlayerScrape.durationMs > 0) durationMs = PlayerScrape.durationMs
+                positionMs = (PlayerScrape.positionMs + if (musicActive) PlayerScrape.ageMs() else 0L).coerceAtLeast(0)
             }
-            val composed = listOfNotNull(series, episode).joinToString(" — ")
-            title = when {
-                composed.isNotBlank() -> composed
-                !title.isNullOrBlank() -> title
-                else -> PlayerScrape.title
+
+            // Idle means idle: the Watch-Next / scraped title + poster are only the *last*
+            // thing watched, so never publish them as now-playing while the user browses —
+            // only the app remains, and the card shows a clean "browsing <app>" state.
+            if (state == "idle") {
+                title = null; series = null; episode = null; season = null; episodeNum = null
+                durationMs = 0; positionMs = 0; posterUrl = null
             }
-            if (PlayerScrape.durationMs > 0) durationMs = PlayerScrape.durationMs
-            positionMs = (PlayerScrape.positionMs + if (musicActive) PlayerScrape.ageMs() else 0L).coerceAtLeast(0)
-            state = if (musicActive) "playing" else "paused"
         }
 
         return NowPlayingSnapshot(
