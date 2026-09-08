@@ -138,6 +138,11 @@ Fields are absent (not null) when unavailable, except where noted. `title`/`seri
 `episode`/`art` for apps that publish no media session (e.g. TVNZ+, ThreeNow) are recovered
 from the Android TV **Watch-Next** provider.
 
+For such apps `state` comes from the device rather than the session: audio playing →
+`playing`; no audio but the player's on-screen scrubber still present (read via the
+accessibility overlay scrape) → `paused`, with `now_playing` kept and `position` frozen;
+neither (the app's menus are up) → `idle`, with `now_playing` cleared to just the app.
+
 `up_next_list` is the current app's Watch-Next tiles (its *Next episode / Continue watching*
 row), falling back to the launcher's cross-app *Continue watching* row when the app has none.
 It is published whether playing or idle — browsing is exactly when it's useful. A pick's `art`

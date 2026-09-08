@@ -20,6 +20,19 @@ object PlayerScrape {
     @Volatile var durationMs: Long = 0
     @Volatile var scrapedAtElapsed: Long = 0L
 
+    /** true while the last read of the player's window still held the scrubber — the user
+     * is inside the player (playing or paused); false once that same window was re-read
+     * without it (they backed out to the app's menus). */
+    @Volatile var inPlayer: Boolean = false
+
+    /** What the overlay's play/pause control says the app is doing: "playing" (it offers
+     * Pause), "paused" (it offers Play), or null when no such control was read. */
+    @Volatile var transport: String? = null
+
+    /** Accessibility window the scrubber was last found in. A read of a *different* window
+     * (a popup over the player) without a scrubber says nothing about having left it. */
+    @Volatile var windowId: Int = -1
+
     /** Fired (on the a11y thread) after a fresh scrape so the reader can publish promptly
      * instead of waiting for the next heartbeat. */
     @Volatile var onScrape: (() -> Unit)? = null
@@ -27,6 +40,7 @@ object PlayerScrape {
     fun clear() {
         pkg = null; title = null; season = null; episode = null
         positionMs = 0; durationMs = 0; scrapedAtElapsed = 0L
+        inPlayer = false; transport = null; windowId = -1
     }
 
     /** Age of the last scrape in ms (Long.MAX_VALUE if never scraped). */

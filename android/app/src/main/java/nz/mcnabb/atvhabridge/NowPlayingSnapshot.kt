@@ -49,6 +49,16 @@ fun playbackStateToString(state: Int?): String = when (state) {
     else -> "idle"
 }
 
+/** Play-state for an app that publishes nothing to its session (Jellyfin): audio is the
+ * honest "playing" signal; the overlay scrape says whether the user is still inside the
+ * player — paused, or stalled/buffering when its control still offers "Pause" — or has
+ * left it for the menus, in which case the session's own state (idle) stands. */
+fun emptySessionState(musicActive: Boolean, inPlayer: Boolean, transport: String?, sessionState: String): String = when {
+    musicActive -> "playing"
+    inPlayer -> if (transport == "playing") "playing" else "paused"
+    else -> sessionState
+}
+
 private val FRIENDLY_APP_NAMES = mapOf(
     "com.google.android.youtube.tv" to "YouTube",
     "com.netflix.ninja" to "Netflix",

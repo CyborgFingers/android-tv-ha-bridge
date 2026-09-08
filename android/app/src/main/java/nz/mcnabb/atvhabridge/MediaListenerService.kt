@@ -76,19 +76,29 @@ class MediaListenerService : NotificationListenerService() {
      * session (Jellyfin) — republish the moment it changes instead of at the next heartbeat. */
     private val audioCallback = object : AudioManager.AudioPlaybackCallback() {
         override fun onPlaybackConfigChanged(configs: MutableList<AudioPlaybackConfiguration>?) {
+            // Read the overlay right now, so the paused/playing decision sees the transport
+            // as it is at this instant rather than as of the last accessibility event — and
+            // once more a moment later, because the app swaps its Pause/Play control a frame
+            // or two after the audio stops (read it too early and pause publishes ~3 s late).
+            Controls.accessibility?.scrapeNow()
             mainHandler.post { refresh() }
+            mainHandler.removeCallbacks(audioSettle)
+            mainHandler.postDelayed(audioSettle, AUDIO_SETTLE_MS)
         }
     }
+    private val audioSettle = Runnable { Controls.accessibility?.scrapeNow(); refresh() }
 
     private var lastScrapeRefreshMs = 0L
+    private val scrapeRefresh = Runnable { lastScrapeRefreshMs = SystemClock.elapsedRealtime(); refresh() }
 
-    /** Republish shortly after an overlay scrape, throttled so a per-second scrape while
-     * the controls are up doesn't re-query Watch-Next every tick. */
+    /** Republish after an overlay scrape, at most once per SCRAPE_REFRESH_GAP_MS (a per-second
+     * scrape while the controls are up must not re-query Watch-Next every tick) — but never
+     * dropped: a throttled request is deferred to the end of the gap, so the last read of a
+     * burst ("player gone" behind a Back press) is always published. */
     private fun requestScrapeRefresh() {
-        val now = SystemClock.elapsedRealtime()
-        if (now - lastScrapeRefreshMs < 2500) return
-        lastScrapeRefreshMs = now
-        mainHandler.post { refresh() }
+        val wait = SCRAPE_REFRESH_GAP_MS - (SystemClock.elapsedRealtime() - lastScrapeRefreshMs)
+        mainHandler.removeCallbacks(scrapeRefresh)
+        mainHandler.postDelayed(scrapeRefresh, wait.coerceAtLeast(0))
     }
 
     override fun onListenerConnected() {
@@ -182,6 +192,8 @@ class MediaListenerService : NotificationListenerService() {
             currentController = null
             mainHandler.removeCallbacks(heartbeat)
             mainHandler.removeCallbacks(adTick)
+            mainHandler.removeCallbacks(scrapeRefresh)
+            mainHandler.removeCallbacks(audioSettle)
             // Stop each independently so a throw from one (NanoHTTPD.stop can) doesn't
             // skip the rest — especially requestRebind, without which we may not rebind.
             runCatching { discovery?.stop() }; discovery = null
@@ -195,6 +207,9 @@ class MediaListenerService : NotificationListenerService() {
     private fun selectController(controllers: List<MediaController>?) {
         val next = pickController(controllers.orEmpty())
         Controls.currentMediaPackage = next?.packageName
+        // Read the overlay on every (re)selection — also each heartbeat — so a bridge
+        // restart mid-pause doesn't sit on "idle" until the paused overlay's next event.
+        Controls.accessibility?.scrapeNow()
         if (next?.sessionToken == currentController?.sessionToken) {
             refresh()
             return
@@ -317,16 +332,20 @@ class MediaListenerService : NotificationListenerService() {
         var state = playbackStateToString(ps?.state)
 
         if (mediaTitle.isNullOrBlank()) {
-            // Empty-session apps (Jellyfin) sit at STATE_NONE whether watching or just
-            // browsing their menus, so the audio signal (isMusicActive) is the only honest
-            // play/idle indicator for them: audio → playing, else the session's own state.
+            // Empty-session apps (Jellyfin) sit at STATE_NONE whether watching, paused or
+            // just browsing their menus. Audio (isMusicActive) is the honest "playing"
+            // signal; the overlay scrape then tells paused from browsing — while the
+            // player's scrubber is still in the tree, the user is inside the player.
             val musicActive = runCatching { audioManager?.isMusicActive == true }.getOrDefault(false)
-            if (musicActive) state = "playing"
+            val scraped = PlayerScrape.pkg == controller.packageName
+            val inPlayer = scraped && PlayerScrape.inPlayer && PlayerScrape.ageMs() < IN_PLAYER_MAX_AGE_MS
+            state = emptySessionState(musicActive, inPlayer, PlayerScrape.transport, state)
 
             // Generic overlay scrape: the accessibility service reads the live
             // position/episode off the on-screen controls. Prefer it over the lagging
-            // Watch-Next tile, projecting the position forward between reads while playing.
-            if (PlayerScrape.pkg == controller.packageName && PlayerScrape.ageMs() < SCRAPE_MAX_AGE_MS) {
+            // Watch-Next tile, projecting the position forward between reads while playing
+            // (paused keeps the position exactly where the scrape last saw it).
+            if (scraped && PlayerScrape.ageMs() < SCRAPE_MAX_AGE_MS) {
                 PlayerScrape.season?.let { season = it }
                 PlayerScrape.episode?.let { episodeNum = it }
                 PlayerScrape.title?.let { scraped ->
@@ -345,6 +364,7 @@ class MediaListenerService : NotificationListenerService() {
             // Idle means idle: the Watch-Next / scraped title + poster are only the *last*
             // thing watched, so never publish them as now-playing while the user browses —
             // only the app remains, and the card shows a clean "browsing <app>" state.
+            // Paused is NOT idle: still inside the media, the poster stays up, frozen.
             if (state == "idle") {
                 title = null; series = null; episode = null; season = null; episodeNum = null
                 durationMs = 0; positionMs = 0; posterUrl = null
@@ -417,6 +437,16 @@ class MediaListenerService : NotificationListenerService() {
         // How long an accessibility overlay scrape stays usable (the reader projects the
         // position forward from it while audio plays; a fresh scrape lands on each interaction).
         private const val SCRAPE_MAX_AGE_MS = 20 * 60 * 1000L
+        // How long "the scrubber is still in the tree" is trusted without a re-read. Paused,
+        // Jellyfin's overlay re-renders on every clock minute (a re-read each ≤60 s), so
+        // this only bites if accessibility events stop entirely — e.g. Home pressed on a
+        // paused player: the launcher's events aren't ours, so it reads as paused this long.
+        // ponytail: ceiling — a pause with no events for 3 min reads as idle until the next.
+        private const val IN_PLAYER_MAX_AGE_MS = 3 * 60 * 1000L
+        // Minimum gap between scrape-triggered republishes (each re-queries Watch-Next).
+        private const val SCRAPE_REFRESH_GAP_MS = 2500L
+        // Second overlay read after an audio start/stop, once the app has redrawn its controls.
+        private const val AUDIO_SETTLE_MS = 400L
         // Strips a leading "S6:E13 — " so the episode label composes cleanly with the series.
         private val EP_PREFIX = Regex("""^S\d+:?\s*E\d+\s*[—–-]\s*""")
 
