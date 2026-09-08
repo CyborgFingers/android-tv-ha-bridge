@@ -215,3 +215,7 @@ class BridgeMediaPlayer(BridgeEntity, MediaPlayerEntity):
     async def async_play_media(self, media_type: str, media_id: str, **kwargs) -> None:
         if media_type in ("app", MediaType.APP):
             await self._client.async_send("launch", package=media_id)
+        elif media_type == "up_next" and media_id.isdigit():
+            # Play up-next pick <media_id> — its index in `up_next_list` — through the
+            # tile's own launch intent, which the bridge kept when it published the list.
+            await self._client.async_send("play_next", index=int(media_id))

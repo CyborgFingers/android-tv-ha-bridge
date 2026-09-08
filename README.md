@@ -8,7 +8,7 @@
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-FF5252?labelColor=0B0F14)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-4CC2FF?labelColor=0B0F14)](https://github.com/hacs/integration)
-[![Version 0.1.10](https://img.shields.io/badge/version-0.1.10-4CC2FF?labelColor=0B0F14)](https://github.com/CyborgFingers/android-tv-ha-bridge/releases)
+[![Version 0.1.11](https://img.shields.io/badge/version-0.1.11-4CC2FF?labelColor=0B0F14)](https://github.com/CyborgFingers/android-tv-ha-bridge/releases)
 [![Made for Home Assistant](https://img.shields.io/badge/Made_for-Home_Assistant-41BDF5?labelColor=0B0F14&logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
 
 [![Open your Home Assistant instance and open this repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=CyborgFingers&repository=android-tv-ha-bridge&category=integration)
@@ -67,7 +67,7 @@ Each paired TV is its own device. For a TV named **Bedroom TV**:
 
 | Entity | What it does |
 | --- | --- |
-| `media_player.bedroom_tv` | State, `media_title`, `media_series_title`, episode, position / duration, poster (`entity_picture`), current app, up-next picks (`up_next_list`, with posters) and ad attributes. Play / pause / stop / next / previous / seek, volume, turn on / off, `play_media`. |
+| `media_player.bedroom_tv` | State, `media_title`, `media_series_title`, episode, position / duration, poster (`entity_picture`), current app, up-next picks (`up_next_list`, with posters — next episodes first, never what's already playing) and ad attributes. Play / pause / stop / next / previous / seek, volume, turn on / off, `play_media` (launch an app, or play an up-next pick). |
 | `remote.bedroom_tv` | `remote.send_command` — D-pad, OK, Back, Home, and `launch:<package>` to open an app. |
 | `sensor.bedroom_tv_current_app` · `sensor.bedroom_tv_up_next` | The foreground app and what's up next. |
 | Diagnostics | Battery, storage free, memory free, volume, network, IP address, Wi-Fi SSID, Wi-Fi signal, last boot. |

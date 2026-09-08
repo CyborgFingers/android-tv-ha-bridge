@@ -23,6 +23,11 @@ object Controls {
      * scraper only reads the overlay while this app is foreground. */
     @Volatile var currentMediaPackage: String? = null
 
+    /** Launch intents of the last published up-next picks, by index — the only intents
+     * `play_next` ever fires. They come from the TV provider (each app's own tile), never
+     * from a client: the API takes an index, not an intent. */
+    @Volatile var upNextIntents: List<String?> = emptyList()
+
     /** true if the command was dispatched. */
     fun handle(action: String, params: JSONObject): Boolean = when (action) {
         "play" -> transport { it.play() }
@@ -43,6 +48,7 @@ object Controls {
         "volume_unmute" -> adjustVolume(AudioManager.ADJUST_UNMUTE)
         "volume_set" -> setVolume(params.optInt("level", -1))
         "launch" -> launch(params.optString("package"))
+        "play_next" -> playNext(params.optInt("index", -1))
         else -> false
     }
 
@@ -92,5 +98,15 @@ object Controls {
             ?: ctx.packageManager.getLaunchIntentForPackage(pkg)) ?: return false
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         return try { ctx.startActivity(intent); true } catch (e: Exception) { false }
+    }
+
+    /** Play up-next pick [index] the way the launcher would: fire the tile's own intent. */
+    private fun playNext(index: Int): Boolean {
+        val uri = upNextIntents.getOrNull(index) ?: return false
+        val ctx = appContext ?: return false
+        return try {
+            ctx.startActivity(Intent.parseUri(uri, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        } catch (e: Exception) { false }
     }
 }
