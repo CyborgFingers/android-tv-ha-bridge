@@ -109,7 +109,12 @@ class MediaListenerService : NotificationListenerService() {
             for (p in Config.PORT..(Config.PORT + 4)) {
                 try {
                     val s = BridgeServer(p, pairing) { which ->
-                        if (which == "current") artResolver.bitmap() else null
+                        when {
+                            which == "current" -> artResolver.bitmap()
+                            which.startsWith("next_") ->
+                                which.removePrefix("next_").toIntOrNull()?.let(artResolver::upNextBitmap)
+                            else -> null
+                        }
                     }
                     s.makeSecure(tlsFactory, null)
                     // timeout 0 = no socket read timeout: NanoHTTPD's default 5s would
@@ -218,6 +223,10 @@ class MediaListenerService : NotificationListenerService() {
         val controller = currentController
         bgExecutor.execute {
             try {
+                // Up-next picks are independent of play/idle: buildSnapshot clears the
+                // now-playing fields while the user browses, and browsing is exactly when
+                // the picks are useful — so they're resolved here, outside that clear.
+                val upNext = upNextList(controller?.packageName)
                 if (controller != null) {
                     artResolver.update(controller.metadata)
                     val snap = buildSnapshot(controller)
@@ -225,14 +234,37 @@ class MediaListenerService : NotificationListenerService() {
                     val artUrl = if (artResolver.bitmap() != null) "/art.jpg?v=${artResolver.version}" else null
                     probe(controller)
                     scheduleAdTick(snap.ad)
-                    BridgeState.publish(snap, artUrl, null, null)
+                    BridgeState.publish(snap, artUrl, null, null, upNext)
                 } else {
                     artResolver.update(null)
-                    BridgeState.publish(null, null, null, null)
+                    BridgeState.publish(null, null, null, null, upNext)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "refresh failed: ${e.message}")
             }
+        }
+    }
+
+    /** Up-next picks: the current app's Watch-Next tiles, else the launcher's cross-app
+     * "continue watching" row. Posters are fetched into [ArtResolver] and served as
+     * /art_next_<i>.jpg; a pick only advertises `art` once its poster actually resolved.
+     * ponytail: re-queries the provider on every refresh (one cursor over a few dozen rows). */
+    private fun upNextList(pkg: String?): List<UpNextItem> {
+        val tiles = pkg?.let { WatchNextResolver.resolveList(contentResolver, it, UP_NEXT_LIMIT) }.orEmpty()
+            .ifEmpty { WatchNextResolver.resolveList(contentResolver, null, UP_NEXT_LIMIT) }
+        artResolver.updateUpNext(tiles.map { it.posterUri })
+        return tiles.mapIndexed { i, t ->
+            val (series, ep) = orderSeriesEpisode(t.title, t.episodeTitle)
+            UpNextItem(
+                title = series,
+                episodeTitle = ep,
+                season = t.season,
+                episode = t.episode,
+                artPath = t.posterUri?.takeIf { artResolver.upNextBitmap(i) != null }
+                    ?.let { "/art_next_$i.jpg?v=${Integer.toHexString(it.hashCode())}" },
+                durationMs = t.durationMs,
+                positionMs = t.positionMs,
+            )
         }
     }
 
@@ -377,6 +409,8 @@ class MediaListenerService : NotificationListenerService() {
         private const val TAG = "MediaListenerService"
         private const val HEARTBEAT_INTERVAL_MS = 30_000L
         private const val AD_TICK_SLACK_MS = 200L
+        // How many up-next picks to publish (and posters to hold) — a remote shows a short rail.
+        private const val UP_NEXT_LIMIT = 6
         // Retry window for the "Missing permission to control media" race right after (re)bind.
         private const val MEDIA_ATTACH_RETRY_MS = 800L
         private const val MEDIA_ATTACH_MAX_RETRIES = 8

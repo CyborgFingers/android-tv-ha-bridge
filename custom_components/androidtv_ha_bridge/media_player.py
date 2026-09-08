@@ -117,6 +117,38 @@ class BridgeMediaPlayer(BridgeEntity, MediaPlayerEntity):
             return None, None
         return await self._client.async_fetch_image(url)
 
+    async def async_get_browse_image(
+        self, media_content_type: str, media_content_id: str, media_image_id: str | None = None
+    ) -> tuple[bytes | None, str | None]:
+        """Poster of up-next pick <media_content_id>, proxied over the pinned TLS
+        connection exactly like the now-playing image (HA serves it on the same
+        /api/media_player_proxy view, under /browse_media/up_next/<i>)."""
+        if media_content_type != "up_next" or not media_content_id.isdigit():
+            return None, None
+        return await self._client.async_fetch_image(
+            self._client.art_url(f"/art_next_{media_content_id}.jpg")
+        )
+
+    def _up_next_list(self) -> list[dict]:
+        """The bridge's up-next picks, each with a `poster` URL served by this entity's
+        media_player_proxy view (see async_get_browse_image). The bridge's poster
+        version rides along as media_image_id so a changed poster gets a new URL."""
+        picks = []
+        for i, item in enumerate(self._client.state.get("up_next_list") or []):
+            art = item.get("art")
+            picks.append(
+                {
+                    "title": item.get("title"),
+                    "episode_title": item.get("episode_title"),
+                    "season": item.get("season"),
+                    "episode": item.get("episode"),
+                    "poster": self.get_browse_image_url("up_next", str(i), art.rpartition("v=")[2])
+                    if art
+                    else None,
+                }
+            )
+        return picks
+
     @property
     def extra_state_attributes(self) -> dict:
         """Expose the richer now-playing detail that has no standard media_player field,
@@ -128,6 +160,7 @@ class BridgeMediaPlayer(BridgeEntity, MediaPlayerEntity):
             "is_ad": np.get("is_ad"),
             "up_next_title": up.get("title"),
             "up_next_series_title": up.get("series_title"),
+            "up_next_list": self._up_next_list(),
         }
         if np.get("is_ad"):
             attrs["ad_skippable"] = np.get("ad_skippable")

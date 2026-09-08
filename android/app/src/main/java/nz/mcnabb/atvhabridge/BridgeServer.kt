@@ -14,7 +14,8 @@ import java.io.IOException
  *   GET  /api/info                 device id/name/model + paired flag (open — for discovery)
  *   POST /api/pair  {"code":"..."} redeem the 6-digit code → {"token":"..."} (open)
  *   GET  /api/state                current now-playing JSON            (token)
- *   GET  /art.jpg  /art_next.jpg   current / up-next poster JPEG       (open; LAN image)
+ *   GET  /art.jpg                  current poster JPEG                 (open; LAN image)
+ *   GET  /art_next_{i}.jpg         poster of up_next_list[i]; /art_next.jpg = i 0 (open)
  *   WS   /ws?token=...             live state pushes                   (token)
  */
 class BridgeServer(
@@ -76,7 +77,9 @@ class BridgeServer(
                 if (authed(session)) handleCommand(session) else unauthorized()
             session.uri == "/api/apps" -> if (authed(session)) json(appsJson()) else unauthorized()
             session.uri == "/art.jpg" -> serveArt("current")
-            session.uri == "/art_next.jpg" -> serveArt("next")
+            session.uri == "/art_next.jpg" -> serveArt("next_0")
+            session.uri.startsWith("/art_next_") ->
+                serveArt("next_" + session.uri.removePrefix("/art_next_").removeSuffix(".jpg"))
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
     } catch (e: Exception) {

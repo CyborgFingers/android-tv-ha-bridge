@@ -29,10 +29,17 @@ object WatchNextResolver {
     )
 
     /** Best (most-recently-engaged) tile published by [pkg], or null. */
-    fun resolve(cr: ContentResolver, pkg: String): Info? =
-        query(cr, WATCH_NEXT, pkg) ?: query(cr, PREVIEW, pkg)
+    fun resolve(cr: ContentResolver, pkg: String): Info? = resolveList(cr, pkg, 1).firstOrNull()
 
-    private fun query(cr: ContentResolver, uri: Uri, pkg: String): Info? {
+    /** Up to [limit] tiles, most-recently-engaged first: [pkg]'s own Watch-Next tiles,
+     * else its preview-channel rows. A null [pkg] reads the launcher's cross-app
+     * "continue watching" row (Watch-Next only — preview rows are per-app channels). */
+    fun resolveList(cr: ContentResolver, pkg: String?, limit: Int): List<Info> {
+        val tiles = query(cr, WATCH_NEXT, pkg).ifEmpty { if (pkg != null) query(cr, PREVIEW, pkg) else emptyList() }
+        return tiles.take(limit)
+    }
+
+    private fun query(cr: ContentResolver, uri: Uri, pkg: String?): List<Info> {
         val cols = arrayOf(
             "package_name", "title", "episode_title", "poster_art_uri",
             "last_engagement_time_utc_millis", "last_playback_position_millis",
@@ -49,30 +56,27 @@ object WatchNextResolver {
                 val iSeason = c.getColumnIndex("season_display_number")
                 val iEpisode = c.getColumnIndex("episode_display_number")
                 val iDur = c.getColumnIndex("duration_millis")
-                var best: Info? = null
-                var bestTime = Long.MIN_VALUE
+                val found = ArrayList<Pair<Long, Info>>()
                 var total = 0
                 while (c.moveToNext()) {
                     total++
-                    if (c.str(iPkg) != pkg) continue
+                    if (pkg != null && c.str(iPkg) != pkg) continue
                     val eng = if (iEng >= 0) c.getLong(iEng) else 0L
-                    if (eng >= bestTime) {
-                        bestTime = eng
-                        best = Info(
-                            c.str(iTitle), c.str(iEp), c.str(iArt),
-                            if (iPos >= 0) c.getLong(iPos) else 0L,
-                            c.str(iSeason)?.takeIf { it.isNotBlank() },
-                            c.str(iEpisode)?.takeIf { it.isNotBlank() },
-                            durationMs = if (iDur >= 0) c.getLong(iDur) else 0L,
-                        )
-                    }
+                    found += eng to Info(
+                        c.str(iTitle), c.str(iEp), c.str(iArt),
+                        if (iPos >= 0) c.getLong(iPos) else 0L,
+                        c.str(iSeason)?.takeIf { it.isNotBlank() },
+                        c.str(iEpisode)?.takeIf { it.isNotBlank() },
+                        durationMs = if (iDur >= 0) c.getLong(iDur) else 0L,
+                    )
                 }
-                Log.i(TAG, "${uri.lastPathSegment}: total=$total match($pkg)=$best")
-                best
-            }
+                val sorted = found.sortedByDescending { it.first }.map { it.second }
+                Log.i(TAG, "${uri.lastPathSegment}: total=$total match($pkg)=${sorted.size} best=${sorted.firstOrNull()}")
+                sorted
+            }.orEmpty()
         } catch (e: Exception) {
             Log.e(TAG, "query ${uri.lastPathSegment} failed: ${e.message}")
-            null
+            emptyList()
         }
     }
 

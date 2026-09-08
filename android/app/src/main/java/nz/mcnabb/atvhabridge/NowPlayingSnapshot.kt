@@ -30,6 +30,18 @@ data class UpNext(
     val posterUrl: String?,
 )
 
+/** One up-next pick (a Watch-Next tile) in `up_next_list`. [artPath] is the bridge-relative
+ * poster path (`/art_next_<i>.jpg?v=…`), null until/unless the poster resolved. */
+data class UpNextItem(
+    val title: String?,        // show / series name
+    val episodeTitle: String?, // episode label, when known
+    val season: String?,
+    val episode: String?,
+    val artPath: String?,
+    val durationMs: Long,
+    val positionMs: Long,
+)
+
 fun playbackStateToString(state: Int?): String = when (state) {
     PlaybackState.STATE_PLAYING -> "playing"
     PlaybackState.STATE_PAUSED -> "paused"

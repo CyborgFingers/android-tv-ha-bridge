@@ -1,6 +1,7 @@
 package nz.mcnabb.atvhabridge
 
 import android.os.Build
+import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -20,6 +21,7 @@ object BridgeState {
     @Volatile private var artUrl: String? = null
     @Volatile private var upNext: UpNext? = null
     @Volatile private var upNextArtUrl: String? = null
+    @Volatile private var upNextList: List<UpNextItem> = emptyList()
     @Volatile var device: Device = Device(id = "", name = Build.MODEL)
 
     /** Device sensors (battery, storage, network, …), refreshed on the heartbeat. */
@@ -41,8 +43,11 @@ object BridgeState {
 
     fun removeListener(l: (String) -> Unit) = listeners.remove(l)
 
-    fun publish(s: NowPlayingSnapshot?, art: String?, next: UpNext?, nextArt: String?) {
-        snap = s; artUrl = art; upNext = next; upNextArtUrl = nextArt
+    fun publish(
+        s: NowPlayingSnapshot?, art: String?, next: UpNext?, nextArt: String?,
+        picks: List<UpNextItem> = emptyList(),
+    ) {
+        snap = s; artUrl = art; upNext = next; upNextArtUrl = nextArt; upNextList = picks
         val json = currentJson()
         listeners.forEach { runCatching { it(json) } }
     }
@@ -85,6 +90,22 @@ object BridgeState {
                 put("title", n.title ?: JSONObject.NULL)
                 put("series_title", n.seriesTitle ?: JSONObject.NULL)
                 put("art", upNextArtUrl ?: JSONObject.NULL)
+            })
+        }
+        val picks = upNextList
+        if (picks.isNotEmpty()) {
+            root.put("up_next_list", JSONArray().apply {
+                picks.forEach { n ->
+                    put(JSONObject().apply {
+                        put("title", n.title ?: JSONObject.NULL)
+                        put("episode_title", n.episodeTitle ?: JSONObject.NULL)
+                        put("season", n.season ?: JSONObject.NULL)
+                        put("episode", n.episode ?: JSONObject.NULL)
+                        put("art", n.artPath ?: JSONObject.NULL)
+                        if (n.durationMs > 0) put("duration", n.durationMs / 1000)
+                        if (n.positionMs > 0) put("position", n.positionMs / 1000)
+                    })
+                }
             })
         }
         sensors?.let { root.put("sensors", it) }

@@ -22,7 +22,12 @@ name you gave the TV, e.g. `Bedroom TV`):
 | `sensor.<tv>_current_app`, `_up_next`, `_battery`, `_storage_free`, `_memory_free`, `_volume`, `_network`, `_ip`, `_wifi_ssid`, `_wifi_signal`, `_last_boot` | One sensor per device metric. |
 
 **Extra `media_player` attributes** (no standard field exists for these):
-`episode_title`, `is_ad`, `ad_skippable`, `ad_skip_in`, `up_next_title`, `up_next_series_title`.
+`episode_title`, `is_ad`, `ad_skippable`, `ad_skip_in`, `up_next_title`, `up_next_series_title`,
+and `up_next_list` — the up-next picks (the current app's Watch-Next tiles, else the launcher's
+cross-app *Continue watching* row; published while browsing too): a list of
+`{ title, episode_title, season, episode, poster }`, where `poster` is an HA-relative
+`/api/media_player_proxy/<entity>/browse_media/up_next/<i>?token=…` URL served exactly like
+`entity_picture` (proxied over the pinned TLS connection).
 
 Read any of it from a template, card or automation, e.g.:
 
@@ -70,7 +75,8 @@ WebSocket over the same port**. The cert is self-signed; pin its SHA-256 fingerp
 | GET | `/api/state` | token | the current [state document](#the-state-document) |
 | POST | `/api/command` | token | body `{ "action": "...", ... }` → `{ "ok": true }` |
 | GET | `/api/apps` | token | `[ { package, name }, … ]` launchable apps |
-| GET | `/art.jpg`, `/art_next.jpg` | open | current / up-next poster JPEG |
+| GET | `/art.jpg` | open | current poster JPEG |
+| GET | `/art_next_<i>.jpg` | open | poster of `up_next_list[i]` (`/art_next.jpg` = index 0) |
 | WS | `/ws?token=…` | token | live state pushes **and** commands (see below) |
 
 **Auth:** pass the paired token as `?token=…` or `Authorization: Bearer …`. Get a token
@@ -112,6 +118,10 @@ Connect to `wss://<host>:<port>/ws?token=…`. The server:
     "ad_skip_in": 0                 // present only while is_ad
   },
   "up_next":  { "title": "…", "series_title": "…", "art": "/art_next.jpg?v=3" },
+  "up_next_list": [                 // up to 6 picks, most-recently-engaged first
+    { "title": "24", "episode_title": "Day 6: 1:00 A.M.-2:00 A.M.", "season": "6", "episode": "20",
+      "art": "/art_next_0.jpg?v=1a2b3c", "duration": 2520, "position": 1653 }
+  ],
   "sensors":  { "model": "…", "manufacturer": "…", "android_version": "…", "sdk": 34,
                 "uptime": "…", "screen_on": true, "battery_level": 100, "battery_state": "…",
                 "storage_free_gb": 12.3, "memory_free_mb": 512, "volume_level": 40,
@@ -127,6 +137,11 @@ while `state == "playing"`.
 Fields are absent (not null) when unavailable, except where noted. `title`/`series`/
 `episode`/`art` for apps that publish no media session (e.g. TVNZ+, ThreeNow) are recovered
 from the Android TV **Watch-Next** provider.
+
+`up_next_list` is the current app's Watch-Next tiles (its *Next episode / Continue watching*
+row), falling back to the launcher's cross-app *Continue watching* row when the app has none.
+It is published whether playing or idle — browsing is exactly when it's useful. A pick's `art`
+is present only once its poster resolved; `duration`/`position` (seconds) when known.
 
 ---
 
