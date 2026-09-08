@@ -60,30 +60,34 @@ class UpNextRankTest {
         assertEquals("Inside Out", pickPlaying(tiles, listOf("Inside Out"))?.title)
         // An episode names itself by its episode name (the reader strips the S:E prefix).
         assertEquals("21", pickPlaying(tiles, listOf("Day 6: 2:00 A.M.-3:00 A.M."))?.episode)
-        // A series name alone never identifies an episode tile.
-        assertEquals("24", pickPlaying(tiles, listOf("Chuck"))?.title)
+        // A series name alone never identifies an episode tile — and an overlay that names
+        // no tile (with no S:E label either) means an item the row doesn't hold: unknown.
+        assertEquals(null, pickPlaying(tiles, listOf("Chuck")))
         assertEquals("24", pickPlaying(tiles, emptyList())?.title)
         assertEquals(null, pickPlaying(emptyList(), listOf("Chuck _amp")))
     }
 
     @Test
-    fun `an item the row doesn't hold is not mistaken for the most recent tile when lengths disagree`() {
-        val episode = tile("24", "6", "21", continueType, ep = "Day 6: 2:00 A.M.-3:00 A.M.", durationMs = 2_520_000)
-        val tiles = listOf(episode, tile("Inside Out", null, null, continueType, durationMs = 5_700_000))
-        // An 8-minute special that isn't in the row: nothing matches, no length agrees → unknown.
+    fun `an item the row doesn't hold is never mistaken for another tile`() {
+        val tiles = listOf(
+            tile("24", "6", "21", continueType, ep = "Day 6: 2:00 A.M.-3:00 A.M.", durationMs = 2_495_000),
+            tile("Mayday", "2", "6", continueType, ep = "Blow Out", durationMs = 2_687_000),
+            tile("Inside Out", null, null, continueType, durationMs = 5_700_000),
+        )
+        // An 8-minute special that isn't in the row: nothing on screen names a tile → unknown.
         assertEquals(null, pickPlaying(tiles, listOf("Chuck _amp", "Pause"), playerDurationMs = 472_000))
-        // The next episode of the same series (near-same length, not in the row yet) keeps the series.
-        assertEquals("24", pickPlaying(tiles, listOf("Day 6: 3:00 A.M.-4:00 A.M."), playerDurationMs = 2_540_000)?.title)
-        // A 95-minute movie is not the 95-minute-ish tile of another film (3 %, not 10 %).
-        assertEquals(null, pickPlaying(tiles, listOf("Pause"), playerDurationMs = 5_400_000))
-        // A name match wins regardless of length; no lengths to compare → recency stands.
-        assertEquals("Inside Out", pickPlaying(tiles, listOf("Inside Out"), playerDurationMs = 472_000)?.title)
-        assertEquals("24", pickPlaying(tiles, listOf("Chuck _amp"), playerDurationMs = 0L)?.title)
-        assertEquals("24", pickPlaying(listOf(tile("24", "6", "21", continueType)), listOf("Chuck _amp"), playerDurationMs = 472_000)?.title)
-        // The newest tile is an 8-minute special; the 42-minute player is the newest 42-minute tile.
-        val withSpecial = listOf(tile("Chuck", null, null, continueType, ep = "Chuck _amp", durationMs = 472_720)) + tiles
-        assertEquals("21", mostRecentOfLength(withSpecial, 2_495_000)?.episode)
-        assertEquals(null, namedOnScreen(withSpecial, listOf("Pause", "Skip Next")))
+        // A fresh 41-minute S2:E7 of another series: adjacent to Mayday S2E6 by number, but not its length.
+        assertEquals(null, pickPlaying(tiles, listOf("Pause", "Skip Next"), season = "2", episode = "7", playerDurationMs = 2_477_000))
+        assertEquals(null, pickPlaying(tiles, listOf("Pause", "Skip Next"), season = "2", episode = "8", playerDurationMs = 2_690_000))
+        // Autoplay into the next episode of the same series keeps the series (S6E21 → S6:E22, same length).
+        assertEquals("24", pickPlaying(tiles, listOf("Day 6: 3:00 A.M.-4:00 A.M."), season = "6", episode = "22", playerDurationMs = 2_500_000)?.title)
+        // Lengths unknown on the tile → the adjacent-episode rule stands on its own.
+        assertEquals("Mayday", pickPlaying(listOf(tile("Mayday", "2", "6", continueType)), listOf("Pause"), season = "2", episode = "7", playerDurationMs = 2_477_000)?.title)
+        // A name match wins regardless of the label; an overlay never read → recency stands.
+        assertEquals("Inside Out", pickPlaying(tiles, listOf("Inside Out"), season = "9", episode = "9")?.title)
+        assertEquals("24", pickPlaying(tiles, emptyList(), season = "2", episode = "8")?.title)
+        // The overlay named nothing this read (its title label fades) — the reader keeps its last pick.
+        assertEquals(null, namedOnScreen(tiles, listOf("Pause", "Skip Next")))
     }
 
     @Test

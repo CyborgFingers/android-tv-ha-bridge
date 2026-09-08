@@ -149,8 +149,10 @@ while `state == "playing"`.
 
 Fields are absent (not null) when unavailable, except where noted. `title`/`series`/
 `episode`/`art` for apps that publish no media session (e.g. TVNZ+, ThreeNow) are recovered
-from the Android TV **Watch-Next** provider — the tile the player's own on-screen labels name
-(an app rewrites its row only when playback stops), else the most recently engaged one.
+from the Android TV **Watch-Next** provider — the tile the player's own on-screen labels name;
+failing that, with an S:E label on screen, the same season's neighbouring episode (autoplay);
+otherwise the item is unknown (an app rewrites its row only when playback stops, so recency
+would name the previous item). With no overlay read at all, the most recently engaged tile.
 
 For such apps `state` comes from the device rather than the session: audio playing →
 `playing`; no audio but the player's on-screen scrubber still present (read via the

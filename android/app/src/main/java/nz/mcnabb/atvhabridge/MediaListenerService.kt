@@ -335,8 +335,8 @@ class MediaListenerService : NotificationListenerService() {
         var episodeNum: String? = null
         var posterUrl: String? = null
         if (mediaTitle.isNullOrBlank()) {
-            // The overlay's own labels (with any "S6:E21 — " prefix stripped) and its scrubber
-            // length pick the tile that's on screen; without a usable scrape the most recent
+            // The overlay's own labels (with any "S6:E21 — " prefix stripped) and its S:E
+            // label pick the tile that's on screen; without a usable scrape the most recent
             // tile stands (see pickPlaying).
             val freshScrape = PlayerScrape.pkg == controller.packageName && PlayerScrape.ageMs() < SCRAPE_MAX_AGE_MS
             val onScreen = if (freshScrape) PlayerScrape.texts.map { EP_PREFIX.replaceFirst(it, "").trim() } else emptyList()
@@ -345,9 +345,9 @@ class MediaListenerService : NotificationListenerService() {
             val pkg = controller.packageName
             val pick = namedOnScreen(tiles, onScreen)
                 ?: lastPick?.takeIf { lastPickPkg == pkg && playerMs > 0 && playerMs == lastPickPlayerMs }
-                ?: mostRecentOfLength(tiles, playerMs)
+                ?: pickPlaying(tiles, onScreen, PlayerScrape.season.takeIf { freshScrape }, PlayerScrape.episode.takeIf { freshScrape }, playerMs)
             if (pick != null) { lastPick = pick; lastPickPkg = pkg; lastPickPlayerMs = playerMs }
-            Log.d(TAG, "watch-next pick: ${pick?.title} / ${pick?.episodeTitle} (S${pick?.season}E${pick?.episode}, ${pick?.durationMs}ms vs player ${playerMs}ms) onScreen=${onScreen.take(6)}")
+            Log.d(TAG, "watch-next pick: ${pick?.title} / ${pick?.episodeTitle} (S${pick?.season}E${pick?.episode}; label S${PlayerScrape.season}E${PlayerScrape.episode}, player ${playerMs}ms) onScreen=${onScreen.take(6)}")
             pick?.let { wn ->
                 val (s, e) = orderSeriesEpisode(wn.title, wn.episodeTitle)
                 series = s; episode = e

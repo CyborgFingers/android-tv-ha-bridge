@@ -129,17 +129,25 @@ fun namedOnScreen(tiles: List<WatchNextResolver.Info>, onScreen: List<String>): 
     return tiles.firstOrNull { (it.episodeTitle ?: it.title)?.trim()?.lowercase() in seen }
 }
 
-/** The most-recently-engaged tile whose length agrees with the player's [playerDurationMs]
- * (±3 %), or null when lengths are known but none agrees: an app rewrites its Watch-Next row
- * only when playback stops, so recency alone still points at the previous item, and a movie
- * or special the row doesn't hold yet must not borrow that item's name. With no lengths to
- * compare, plain recency stands. Pure — unit-tested. */
-fun mostRecentOfLength(tiles: List<WatchNextResolver.Info>, playerDurationMs: Long): WatchNextResolver.Info? {
-    val recent = tiles.firstOrNull() ?: return null
-    if (playerDurationMs <= 0 || tiles.none { it.durationMs > 0 }) return recent
-    return tiles.firstOrNull { it.durationMs > 0 && kotlin.math.abs(it.durationMs - playerDurationMs) <= it.durationMs * 3 / 100 }
+/** The tile that's on screen. Named by the overlay's own labels when it is; otherwise, when
+ * the overlay carries a season/episode label ([season]/[episode]) but names no tile, the
+ * item isn't in the row yet — the most recent tile of the same season within one episode
+ * AND of the player's length ([playerDurationMs], ±3 % when both are known) is the series
+ * it continues (autoplay; a series' episodes share a length, another series' adjacent
+ * episode number doesn't), and there is no other honest guess: an app rewrites its
+ * Watch-Next row only when playback stops, so recency alone still points at the previous
+ * item, and a fresh episode, movie or special must not borrow its name. With no overlay
+ * read at all, recency stands. Pure — unit-tested. */
+fun pickPlaying(
+    tiles: List<WatchNextResolver.Info>, onScreen: List<String>,
+    season: String? = null, episode: String? = null, playerDurationMs: Long = 0L,
+): WatchNextResolver.Info? {
+    namedOnScreen(tiles, onScreen)?.let { return it }
+    if (onScreen.isEmpty()) return tiles.firstOrNull()
+    val ep = episode?.toIntOrNull() ?: return null
+    return tiles.firstOrNull { t ->
+        t.season == season &&
+            t.episode?.toIntOrNull()?.let { kotlin.math.abs(it - ep) <= 1 } == true &&
+            (playerDurationMs <= 0 || t.durationMs <= 0 || kotlin.math.abs(t.durationMs - playerDurationMs) <= t.durationMs * 3 / 100)
+    }
 }
-
-/** The tile that's on screen: named by the overlay, else the most recent one of the player's length. */
-fun pickPlaying(tiles: List<WatchNextResolver.Info>, onScreen: List<String>, playerDurationMs: Long = 0L): WatchNextResolver.Info? =
-    namedOnScreen(tiles, onScreen) ?: mostRecentOfLength(tiles, playerDurationMs)
