@@ -114,8 +114,15 @@ class ControlAccessibilityService : AccessibilityService() {
         val positionSec = times.first()
         val durationSec = times.last()
         if (durationSec <= 0 || positionSec > durationSec) return
+        // A new duration is a new item: drop the previous item's S:E label so a movie or
+        // special (no S:E on its overlay) can't inherit the last episode's identity.
+        // ponytail: two consecutive items of identical length keep the old label until an S:E shows.
+        if (PlayerScrape.durationMs != durationSec * 1000L) {
+            PlayerScrape.title = null; PlayerScrape.season = null; PlayerScrape.episode = null
+        }
         // Position/duration update whenever the scrubber is visible (even behind a menu).
         PlayerScrape.pkg = pkg
+        PlayerScrape.texts = longTexts
         PlayerScrape.positionMs = positionSec * 1000L
         PlayerScrape.durationMs = durationSec * 1000L
         PlayerScrape.scrapedAtElapsed = SystemClock.elapsedRealtime()
@@ -131,7 +138,7 @@ class ControlAccessibilityService : AccessibilityService() {
             PlayerScrape.season = se?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
             PlayerScrape.episode = se?.groupValues?.getOrNull(2)?.takeIf { it.isNotBlank() }
         }
-        Log.i(TAG, "scrape($pkg): pos=${positionSec}s dur=${durationSec}s transport=$transport title=${PlayerScrape.title} s=${PlayerScrape.season} e=${PlayerScrape.episode}")
+        Log.i(TAG, "scrape($pkg): pos=${positionSec}s dur=${durationSec}s transport=$transport title=${PlayerScrape.title} s=${PlayerScrape.season} e=${PlayerScrape.episode} texts=${longTexts.take(8)}")
         PlayerScrape.onScrape?.invoke()
     }
 

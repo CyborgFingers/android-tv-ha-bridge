@@ -42,6 +42,13 @@ class MediaListenerService : NotificationListenerService() {
     private val adDetector = AdDetector()
     private var lastProbe: String? = null
 
+    /** The Watch-Next tile last identified as on screen, kept while the same app's player
+     * shows the same length: the overlay's title label isn't in every read (it fades on
+     * its own), and one read missing it doesn't mean the item changed. */
+    private var lastPick: WatchNextResolver.Info? = null
+    private var lastPickPkg: String? = null
+    private var lastPickPlayerMs = 0L
+
     private val controllerCallback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) = refresh()
         override fun onPlaybackStateChanged(state: PlaybackState?) = refresh()
@@ -328,7 +335,20 @@ class MediaListenerService : NotificationListenerService() {
         var episodeNum: String? = null
         var posterUrl: String? = null
         if (mediaTitle.isNullOrBlank()) {
-            WatchNextResolver.resolve(contentResolver, controller.packageName)?.let { wn ->
+            // The overlay's own labels (with any "S6:E21 — " prefix stripped) and its scrubber
+            // length pick the tile that's on screen; without a usable scrape the most recent
+            // tile stands (see pickPlaying).
+            val freshScrape = PlayerScrape.pkg == controller.packageName && PlayerScrape.ageMs() < SCRAPE_MAX_AGE_MS
+            val onScreen = if (freshScrape) PlayerScrape.texts.map { EP_PREFIX.replaceFirst(it, "").trim() } else emptyList()
+            val tiles = WatchNextResolver.resolveAll(contentResolver, controller.packageName)
+            val playerMs = if (freshScrape) PlayerScrape.durationMs else 0L
+            val pkg = controller.packageName
+            val pick = namedOnScreen(tiles, onScreen)
+                ?: lastPick?.takeIf { lastPickPkg == pkg && playerMs > 0 && playerMs == lastPickPlayerMs }
+                ?: mostRecentOfLength(tiles, playerMs)
+            if (pick != null) { lastPick = pick; lastPickPkg = pkg; lastPickPlayerMs = playerMs }
+            Log.d(TAG, "watch-next pick: ${pick?.title} / ${pick?.episodeTitle} (S${pick?.season}E${pick?.episode}, ${pick?.durationMs}ms vs player ${playerMs}ms) onScreen=${onScreen.take(6)}")
+            pick?.let { wn ->
                 val (s, e) = orderSeriesEpisode(wn.title, wn.episodeTitle)
                 series = s; episode = e
                 season = wn.season; episodeNum = wn.episode

@@ -20,6 +20,12 @@ object PlayerScrape {
     @Volatile var durationMs: Long = 0
     @Volatile var scrapedAtElapsed: Long = 0L
 
+    /** Every label read off the overlay in the last scrape (title, episode name, button
+     * names …). The reader matches these against the app's Watch-Next tiles to pin down the
+     * item on screen — the only live identity for a movie or special, whose overlay carries
+     * no S:E label. */
+    @Volatile var texts: List<String> = emptyList()
+
     /** true while the last read of the player's window still held the scrubber — the user
      * is inside the player (playing or paused); false once that same window was re-read
      * without it (they backed out to the app's menus). */
@@ -39,7 +45,7 @@ object PlayerScrape {
 
     fun clear() {
         pkg = null; title = null; season = null; episode = null
-        positionMs = 0; durationMs = 0; scrapedAtElapsed = 0L
+        positionMs = 0; durationMs = 0; scrapedAtElapsed = 0L; texts = emptyList()
         inPlayer = false; transport = null; windowId = -1
     }
 

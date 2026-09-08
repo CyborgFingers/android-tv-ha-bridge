@@ -38,8 +38,8 @@ object WatchNextResolver {
         val isNext: Boolean get() = type == WATCH_NEXT_TYPE_NEXT
     }
 
-    /** Best (most-recently-engaged) tile published by [pkg], or null — the item being resumed. */
-    fun resolve(cr: ContentResolver, pkg: String): Info? = tiles(cr, pkg).firstOrNull()
+    /** All of [pkg]'s tiles, most-recently-engaged first — see [pickPlaying] for which one is on screen. */
+    fun resolveAll(cr: ContentResolver, pkg: String): List<Info> = tiles(cr, pkg)
 
     /** Up to [limit] picks: [pkg]'s own Watch-Next tiles, else its preview-channel rows, ranked
      * by [rankUpNext] minus whatever [skip] rejects (the caller drops what's playing). A null
@@ -114,6 +114,32 @@ object WatchNextResolver {
 }
 
 /** The picks order: NEXT-episode tiles ahead of resume points, the provider's recency order
- * kept within each group (stable sort), minus the tiles [skip] rejects. Pure — unit-tested. */
+ * kept within each group (stable sort), minus the tiles [skip] rejects and any duplicate
+ * rows (an app's row rewrite can double-insert). Pure — unit-tested. */
 fun rankUpNext(tiles: List<WatchNextResolver.Info>, skip: (WatchNextResolver.Info) -> Boolean): List<WatchNextResolver.Info> =
-    tiles.filterNot(skip).sortedByDescending { it.isNext }
+    tiles.filterNot(skip)
+        .distinctBy { listOf(it.title, it.episodeTitle, it.season, it.episode) }
+        .sortedByDescending { it.isNext }
+
+/** The tile whose episode name (or, for a movie, title) is among the player overlay's own
+ * labels [onScreen] — the item that's on screen, named by the app itself. Pure — unit-tested. */
+fun namedOnScreen(tiles: List<WatchNextResolver.Info>, onScreen: List<String>): WatchNextResolver.Info? {
+    val seen = onScreen.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+    if (seen.isEmpty()) return null
+    return tiles.firstOrNull { (it.episodeTitle ?: it.title)?.trim()?.lowercase() in seen }
+}
+
+/** The most-recently-engaged tile whose length agrees with the player's [playerDurationMs]
+ * (±3 %), or null when lengths are known but none agrees: an app rewrites its Watch-Next row
+ * only when playback stops, so recency alone still points at the previous item, and a movie
+ * or special the row doesn't hold yet must not borrow that item's name. With no lengths to
+ * compare, plain recency stands. Pure — unit-tested. */
+fun mostRecentOfLength(tiles: List<WatchNextResolver.Info>, playerDurationMs: Long): WatchNextResolver.Info? {
+    val recent = tiles.firstOrNull() ?: return null
+    if (playerDurationMs <= 0 || tiles.none { it.durationMs > 0 }) return recent
+    return tiles.firstOrNull { it.durationMs > 0 && kotlin.math.abs(it.durationMs - playerDurationMs) <= it.durationMs * 3 / 100 }
+}
+
+/** The tile that's on screen: named by the overlay, else the most recent one of the player's length. */
+fun pickPlaying(tiles: List<WatchNextResolver.Info>, onScreen: List<String>, playerDurationMs: Long = 0L): WatchNextResolver.Info? =
+    namedOnScreen(tiles, onScreen) ?: mostRecentOfLength(tiles, playerDurationMs)

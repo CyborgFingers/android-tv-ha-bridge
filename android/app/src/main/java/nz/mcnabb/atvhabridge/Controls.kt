@@ -5,6 +5,8 @@ import android.content.Intent
 import android.media.AudioManager
 import android.media.session.MediaController
 import android.media.session.PlaybackState
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import org.json.JSONObject
 
@@ -100,13 +102,26 @@ object Controls {
         return try { ctx.startActivity(intent); true } catch (e: Exception) { false }
     }
 
-    /** Play up-next pick [index] the way the launcher would: fire the tile's own intent. */
+    /** Play up-next pick [index] the way the launcher would: fire the tile's own intent. If
+     * the app that owns the tile is still inside its player, back out of it first and fire
+     * a moment later — a deep link that lands on a live player is dropped by some apps
+     * (Jellyfin ends up on Home), while the same link from any normal screen just works.
+     * ponytail: "in the player" is the last overlay read; a stale one costs a Back press. */
     private fun playNext(index: Int): Boolean {
         val uri = upNextIntents.getOrNull(index) ?: return false
         val ctx = appContext ?: return false
-        return try {
-            ctx.startActivity(Intent.parseUri(uri, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            true
-        } catch (e: Exception) { false }
+        val intent = try {
+            Intent.parseUri(uri, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        } catch (e: Exception) { return false }
+        val fire = { runCatching { ctx.startActivity(intent) }.isSuccess }
+        val target = intent.component?.packageName ?: intent.`package`
+        val leavePlayer = target != null && target == PlayerScrape.pkg && PlayerScrape.inPlayer &&
+            accessibility?.doGlobal("back") == true
+        if (!leavePlayer) return fire()
+        Handler(Looper.getMainLooper()).postDelayed({ fire() }, LEAVE_PLAYER_MS)
+        return true
     }
+
+    // How long the app gets to close its player before the tile's intent is fired.
+    private const val LEAVE_PLAYER_MS = 900L
 }
