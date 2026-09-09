@@ -404,14 +404,15 @@
 
   <section id="apps">
     <div class="wrap">
-      <span class="eyebrow">Supported media apps</span>
+      <span class="eyebrow">App compatibility</span>
       <h2>Most apps just work. The awkward ones get special treatment.</h2>
       <div class="apps">
-        <div class="lvl"><h3><span class="tag">Full</span>Now-playing</h3><p>Title, artist, thumbnail, progress — any app with a standard MediaSession.</p><div class="list"><span>YouTube</span><span>SmartTube</span><span>Jellyfin</span><span>Plex</span><span>Spotify</span><span>VLC</span><span>Kodi</span><span>ExoPlayer apps</span></div></div>
-        <div class="lvl"><h3><span class="tag">Recovered</span>Watch Next</h3><p>Show, episode and poster via the Android TV Watch-Next provider, for apps that publish no media metadata.</p><div class="list"><span>TVNZ+</span><span>ThreeNow</span><span>…and similar</span></div></div>
+        <div class="lvl"><h3><span class="tag">Full</span>Now-playing</h3><p>Title, artist, thumbnail, progress — any app with a standard MediaSession.</p><div class="list"><span>YouTube</span><span>SmartTube</span><span>Jellyfin (patched)</span><span>Plex</span><span>Spotify</span><span>VLC</span><span>Kodi</span><span>ExoPlayer apps</span></div></div>
+        <div class="lvl"><h3><span class="tag">Recovered</span>Watch Next</h3><p>Show, episode and poster via the Android TV Watch-Next provider, for apps that publish no media metadata.</p><div class="list"><span>TVNZ+</span><span>ThreeNow</span><span>Jellyfin (stock)</span><span>…and similar</span></div></div>
         <div class="lvl"><h3><span class="tag">State</span>State only</h3><p>State, progress and app name where the app restricts metadata — and as the fallback for everything else.</p><div class="list"><span>Netflix</span><span>Prime Video</span><span>Any other app</span></div></div>
         <div class="lvl"><h3><span class="tag">Always</span>Control</h3><p>Play / pause, D-pad, OK, Back, Home and app launch work regardless of what's on screen.</p><div class="list"><span>Any app</span></div></div>
       </div>
+      <p class="kicker"><strong>Jellyfin:</strong> the stock app publishes no MediaSession for video, so out of the box it's recovered from Watch Next. For live now-playing — title, series, season / episode, position, poster, real play / pause — build the <a href="https://github.com/CyborgFingers/jellyfin-androidtv/tree/video-media-session">video-media-session</a> branch of CyborgFingers/jellyfin-androidtv; the bridge picks it up automatically.</p>
       <p class="kicker">Found an app that behaves differently? <a href="https://github.com/CyborgFingers/android-tv-ha-bridge/issues">Open an issue</a> — compatibility reports are the most useful thing you can send.</p>
     </div>
   </section>
@@ -432,7 +433,7 @@
           <div role="row"><span role="columnheader">Permission</span><span role="columnheader">Why</span></div>
           <div role="row"><span role="cell">Notification access</span><span role="cell">Read the active MediaSession — what's playing</span></div>
           <div role="row"><span role="cell">TV info (<code>READ_TV_LISTINGS</code>)</span><span role="cell">Read the Watch Next row</span></div>
-          <div role="row"><span role="cell">Accessibility</span><span role="cell">Send D-pad / OK / Back / Home. Reads nothing from the screen</span></div>
+          <div role="row"><span role="cell">Accessibility</span><span role="cell">Send D-pad / OK / Back / Home. Reads only the player overlay's time / title labels, and only for apps that publish no media metadata</span></div>
         </div>
       </div>
     </div>

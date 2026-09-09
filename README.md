@@ -52,7 +52,7 @@ That second path is the standout. Apps that are a black box to every other integ
 | Action | How the app does it |
 | --- | --- |
 | Play / pause / stop / next / previous / seek / volume | `MediaController` transport controls |
-| D-pad, OK, Back, Home | A small Accessibility service (it reads nothing from the screen) |
+| D-pad, OK, Back, Home | A small Accessibility service. It sends keys; the only thing it reads is the player overlay's time / title labels, and only for apps that publish no media metadata (see [App compatibility](#-app-compatibility)) |
 | Launch apps / deep links | Android intents |
 
 ### Discovery, pairing & security
@@ -107,18 +107,34 @@ entity: media_player.bedroom_tv
 
 The `remote` and up-next entities are found automatically from the device — you only have to set `entity`.
 
-## 📱 Supported media apps
+## 📱 App compatibility
 
-| Level | What Home Assistant sees | Apps |
-| --- | --- | --- |
-| **Full now-playing** | Title · artist · thumbnail · progress | YouTube (incl. SmartTube), Jellyfin, Plex — and generally any app that exposes a standard MediaSession (Spotify, VLC, Kodi, most ExoPlayer-based players) |
-| **Watch-Next recovery** | Show · episode · poster | TVNZ+, ThreeNow — and other apps that publish no media metadata but populate the Android TV *Watch Next* row |
-| **State only** | State · progress · app name | Netflix, Prime Video (they restrict metadata) — and any other app, as the fallback |
-| **Control** | Play / pause · D-pad · Back / Home / OK · launch app | Any app |
+What Home Assistant sees depends on what the app publishes. Most players expose a standard Android **MediaSession** and just work. Apps that publish nothing are **recovered** instead: show, episode and poster from the Android TV *Watch Next* row, position and paused / playing from the player's own on-screen labels (read by the Accessibility service). Navigation and app launch work for every app.
 
-> TVNZ+ and ThreeNow titles come via the Android TV Watch-Next provider, so they appear once the show is in the launcher's *Continue watching* row.
+| App | Now-playing (title · art · progress) | Season / episode | Play / pause · transport | Notes |
+| --- | --- | --- | --- | --- |
+| **Jellyfin — patched build** | ✅ Live (MediaSession) | ✅ Live | ✅ Native | Title, series, season / episode, position, poster and real play / pause, straight from the player. Needs the [`video-media-session` branch of `CyborgFingers/jellyfin-androidtv`](https://github.com/CyborgFingers/jellyfin-androidtv/tree/video-media-session) — see below. |
+| **Jellyfin — stock** | ⚠️ Recovered (Watch Next + player overlay) | ⚠️ Recovered | ❌ Play / pause from HA doesn't reach the player · D-pad / OK / Back / Home work | Stock Jellyfin publishes **no MediaSession for video** (state `NONE`, no metadata), so there is no live session to read. |
+| YouTube · SmartTube | ✅ Live (MediaSession) | — | ✅ Native | Ad awareness: `is_ad`, `ad_skippable`, `ad_skip_in`. |
+| Plex · Spotify · VLC · Kodi · most ExoPlayer apps | ✅ Live (MediaSession) | If published | ✅ Native | Any app with a standard MediaSession. Season / episode only when the app numbers its items (disc / track). |
+| TVNZ+ · ThreeNow | ⚠️ Recovered (Watch Next + player overlay) | ⚠️ Recovered | App-dependent · D-pad / OK / Back / Home work | No media metadata at all. Show, episode and poster appear once the show is in the launcher's *Continue watching* row. |
+| Netflix · Prime Video | State · progress · app name | — | ✅ Via its MediaSession | They restrict metadata. |
+| Any other app | State + app name if it publishes a MediaSession; nothing if it doesn't | — | Navigation + launch always; transport when it has a session | [Report what you see](https://github.com/CyborgFingers/android-tv-ha-bridge/issues) — compatibility notes are the most useful issue you can open. |
 
-Found an app that behaves differently? Please [open an issue](https://github.com/CyborgFingers/android-tv-ha-bridge/issues) — compatibility reports are the most useful thing you can send.
+**Live** = read straight from the app's MediaSession, the moment it changes. **Recovered** = pieced together from Watch Next and the on-screen player: the right show and episode, but not a live feed.
+
+> **Jellyfin, explained.** The stock Jellyfin Android TV app publishes **no MediaSession while playing video** — upstream [PR #5735](https://github.com/jellyfin/jellyfin-androidtv/pull/5735), which would have added one, was never merged. Out of the box the bridge therefore recovers show / episode / poster from the Watch Next row and reads position and paused / playing off the player's overlay: good, but not live, and Home Assistant's play / pause can't reach the player. The [`video-media-session`](https://github.com/CyborgFingers/jellyfin-androidtv/tree/video-media-session) branch of `CyborgFingers/jellyfin-androidtv` (a port of #5735 plus full metadata) adds a real video MediaSession — title, series, season / episode, position, poster, honest playback state. Install that build and the bridge picks the session up automatically; nothing to configure.
+
+### Tested apps
+
+Confirmed on a real Android TV box by the author:
+
+- **Jellyfin (patched build)** — full live now-playing end-to-end: title, series, season / episode, position, poster, play / pause. Built from [`CyborgFingers/jellyfin-androidtv` @ `video-media-session`](https://github.com/CyborgFingers/jellyfin-androidtv/tree/video-media-session).
+- **Jellyfin (stock)** — recovered: state, progress, show / episode / poster from Watch Next. No live session.
+- **TVNZ+** and **ThreeNow** — recovered from Watch Next.
+- **YouTube** — live now-playing via MediaSession, with ad awareness.
+
+Everything else in the table is expected to work by the mechanism listed but hasn't been verified by the author — please [open an issue](https://github.com/CyborgFingers/android-tv-ha-bridge/issues) with what you see, good or bad.
 
 ## 🚀 Install
 
