@@ -50,7 +50,10 @@ class MediaListenerService : NotificationListenerService() {
     private var lastPickPlayerMs = 0L
 
     private val controllerCallback = object : MediaController.Callback() {
-        override fun onMetadataChanged(metadata: MediaMetadata?) = refresh()
+        override fun onMetadataChanged(metadata: MediaMetadata?) {
+            aimScraper(currentController)
+            refresh()
+        }
         override fun onPlaybackStateChanged(state: PlaybackState?) = refresh()
         override fun onSessionDestroyed() {
             currentController = null
@@ -229,7 +232,7 @@ class MediaListenerService : NotificationListenerService() {
 
     private fun selectController(controllers: List<MediaController>?) {
         val next = pickController(controllers.orEmpty())
-        Controls.currentMediaPackage = next?.packageName
+        aimScraper(next)
         // Read the overlay on every (re)selection — also each heartbeat — so a bridge
         // restart mid-pause doesn't sit on "idle" until the paused overlay's next event.
         Controls.accessibility?.scrapeNow()
@@ -241,20 +244,31 @@ class MediaListenerService : NotificationListenerService() {
         currentController = next
         Controls.mediaController = next
         next?.registerCallback(controllerCallback, mainHandler)
+        Log.i(TAG, "session: ${next?.packageName} state=${next?.playbackState?.state} " +
+            (if (next?.hasTitle == true) "names its item — overlay scrape off" else "scrape=${Controls.currentMediaPackage}"))
         refresh()
     }
 
-    private fun pickController(controllers: List<MediaController>): MediaController? {
-        controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }?.let { return it }
-        controllers.firstOrNull { it.metadata != null }?.let { return it }
-        // Last resort: an app that's active but publishes neither a play-state nor
-        // metadata — Jellyfin's video player sits at STATE_NONE. Take it so buildSnapshot
-        // can still name the app and recover the title/poster from the Watch-Next tile;
-        // skip clearly-dead sessions so a stopped/errored one isn't shown as playing.
-        return controllers.firstOrNull {
-            val s = it.playbackState?.state
-            s != PlaybackState.STATE_STOPPED && s != PlaybackState.STATE_ERROR
-        }
+    /** The best-ranked session (see [sessionRank]); the system's own priority order breaks
+     * ties. A session that publishes neither a play-state nor metadata is still taken (last),
+     * so buildSnapshot can name the app and recover the item from its Watch-Next tile. */
+    private fun pickController(controllers: List<MediaController>): MediaController? =
+        controllers.map { it to sessionRank(it.playbackState?.state, it.metadata != null) }
+            .filter { it.second > 0 }
+            .maxByOrNull { it.second }?.first
+
+    /** A session that names its own item — read as published, never scraped. */
+    private val MediaController.hasTitle: Boolean
+        get() = metadata?.let {
+            it.getString(MediaMetadata.METADATA_KEY_TITLE) ?: it.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+        }.isNullOrBlank().not()
+
+    /** Point the overlay scraper at [c]'s app — or at nothing when [c] names its own item:
+     * the scrape (and the audio-based play state) is only the fallback for a session that
+     * publishes no title, and must never clobber one that does. Re-aimed whenever the
+     * session's metadata changes, as the title can land after the session is picked. */
+    private fun aimScraper(c: MediaController?) {
+        Controls.currentMediaPackage = c?.takeUnless { it.hasTitle }?.packageName
     }
 
     private fun refresh() {
@@ -356,6 +370,17 @@ class MediaListenerService : NotificationListenerService() {
                 posterUrl = wn.posterUri // http OR content:// — ArtResolver fetches both
                 wnPositionMs = wn.positionMs
                 wnDurationMs = wn.durationMs
+            }
+        } else if (metadata != null) {
+            // A session that names its item may number it too: season and episode travel in
+            // the disc/track keys (there are no dedicated ones — the patched Jellyfin video
+            // player puts them there, with the series as artist). Read them as published.
+            // ponytail: a music player that numbers its tracks reads as S<disc>E<track> too.
+            season = metadata.getLong(MediaMetadata.METADATA_KEY_DISC_NUMBER).takeIf { it > 0 }?.toString()
+            episodeNum = metadata.getLong(MediaMetadata.METADATA_KEY_TRACK_NUMBER).takeIf { it > 0 }?.toString()
+            if (season != null || episodeNum != null) {
+                series = artist
+                episode = mediaTitle
             }
         }
 

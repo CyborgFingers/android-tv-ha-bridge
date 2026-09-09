@@ -55,8 +55,23 @@ fun isNowPlaying(series: String?, episodeTitle: String?, season: String?, episod
         listOfNotNull(series, episodeTitle).joinToString(" — ").equals(snap.title, ignoreCase = true)
 }
 
+/** How worth reading a session is (0 = never). Playing first; then one that both names its
+ * item and reports a transport state — an app may publish two (the patched Jellyfin video
+ * player, paused or buffering, next to a media3 session idling at STATE_NONE with nothing
+ * in it), and the one that says what it's doing wins; then a session that only names its
+ * item; last one that publishes neither, unless it's stopped or errored. Pure — unit-tested. */
+fun sessionRank(state: Int?, hasMetadata: Boolean): Int = when {
+    state == PlaybackState.STATE_PLAYING -> 4
+    hasMetadata && state != null && state != PlaybackState.STATE_NONE -> 3
+    hasMetadata -> 2
+    state != PlaybackState.STATE_STOPPED && state != PlaybackState.STATE_ERROR -> 1
+    else -> 0
+}
+
+/** Buffering is playing: the player is running, as the overlay-scrape path already reads a
+ * silent "Pause" control (see [emptySessionState]) — a rebuffer must not flash "idle". */
 fun playbackStateToString(state: Int?): String = when (state) {
-    PlaybackState.STATE_PLAYING -> "playing"
+    PlaybackState.STATE_PLAYING, PlaybackState.STATE_BUFFERING -> "playing"
     PlaybackState.STATE_PAUSED -> "paused"
     PlaybackState.STATE_STOPPED, PlaybackState.STATE_NONE -> "idle"
     else -> "idle"

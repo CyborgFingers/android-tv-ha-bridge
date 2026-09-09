@@ -21,8 +21,9 @@ object Controls {
     @Volatile var accessibility: ControlAccessibilityService? = null
     @Volatile var appContext: Context? = null
 
-    /** Package of the app that owns the current media session — the accessibility
-     * scraper only reads the overlay while this app is foreground. */
+    /** Package whose player overlay the accessibility scraper reads (only while it is
+     * foreground): the app owning the current media session — or null when that session
+     * names its own item, in which case nothing is scraped. */
     @Volatile var currentMediaPackage: String? = null
 
     /** Launch intents of the last published up-next picks, by index — the only intents
@@ -115,12 +116,21 @@ object Controls {
         } catch (e: Exception) { return false }
         val fire = { runCatching { ctx.startActivity(intent) }.isSuccess }
         val target = intent.component?.packageName ?: intent.`package`
-        val leavePlayer = target != null && target == PlayerScrape.pkg && PlayerScrape.inPlayer &&
-            accessibility?.doGlobal("back") == true
+        val leavePlayer = target != null && inPlayer(target) && accessibility?.doGlobal("back") == true
         if (!leavePlayer) return fire()
         Handler(Looper.getMainLooper()).postDelayed({ fire() }, LEAVE_PLAYER_MS)
         return true
     }
+
+    /** true while [pkg]'s player is up: its overlay was last read with the scrubber in it,
+     * or its own session — one that names its item is never scraped — reports live transport. */
+    private fun inPlayer(pkg: String): Boolean {
+        if (pkg == PlayerScrape.pkg && PlayerScrape.inPlayer) return true
+        val c = mediaController?.takeIf { it.packageName == pkg } ?: return false
+        return c.playbackState?.state in LIVE_STATES
+    }
+
+    private val LIVE_STATES = setOf(PlaybackState.STATE_PLAYING, PlaybackState.STATE_PAUSED, PlaybackState.STATE_BUFFERING)
 
     // How long the app gets to close its player before the tile's intent is fired.
     private const val LEAVE_PLAYER_MS = 900L
