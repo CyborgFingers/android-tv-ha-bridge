@@ -19,8 +19,8 @@ android {
         applicationId "nz.mcnabb.atvhabridge"
         minSdk 26
         targetSdk 34
-        versionCode 13
-        versionName "0.1.14"
+        versionCode 14
+        versionName "0.1.15"
     }
 
     signingConfigs {

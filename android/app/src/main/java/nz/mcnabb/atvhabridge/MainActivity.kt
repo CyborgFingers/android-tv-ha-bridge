@@ -3,6 +3,7 @@ package nz.mcnabb.atvhabridge
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -44,6 +45,10 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.newCodeButton).setOnClickListener {
             pairing.rotateCode(); render()
         }
+        findViewById<Button>(R.id.grantScreenButton).setOnClickListener {
+            val mgr = getSystemService(MediaProjectionManager::class.java)
+            startActivityForResult(mgr.createScreenCaptureIntent(), REQ_SCREEN)
+        }
     }
 
     override fun onResume() { super.onResume(); ui.post(tick) }
@@ -51,6 +56,16 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(req: Int, perms: Array<out String>, results: IntArray) {
         super.onRequestPermissionsResult(req, perms, results)
+        render()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_SCREEN && resultCode == RESULT_OK && data != null) {
+            // Must start the foreground service now, while this Activity is still in the
+            // foreground — Android 14 refuses a mediaProjection-type FGS start otherwise.
+            ScreenCaptureService.start(this, resultCode, data)
+        }
         render()
     }
 
@@ -75,6 +90,7 @@ class MainActivity : Activity() {
         stepButton(R.id.grantNotifButton, notif, R.string.grant_notif, R.string.grant_notif_done)
         stepButton(R.id.grantTvButton, tv, R.string.grant_tv, R.string.grant_tv_done)
         stepButton(R.id.grantA11yButton, a11y, R.string.grant_a11y, R.string.grant_a11y_done)
+        stepButton(R.id.grantScreenButton, ScreenCaptureService.isActive(), R.string.grant_screen, R.string.grant_screen_done)
 
         val ready = notif && tv && a11y
         findViewById<LinearLayout>(R.id.onboarding).visibility = if (ready) View.GONE else View.VISIBLE
@@ -106,5 +122,6 @@ class MainActivity : Activity() {
     companion object {
         private const val REFRESH_MS = 3000L
         private const val REQ_TV = 1
+        private const val REQ_SCREEN = 2
     }
 }

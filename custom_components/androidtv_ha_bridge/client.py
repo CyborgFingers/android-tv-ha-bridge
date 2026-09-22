@@ -122,6 +122,23 @@ class BridgeClient:
             pass
         return None, None
 
+    async def async_open_screen_stream(self) -> aiohttp.ClientResponse | None:
+        """Open the bridge's live /screen.mjpeg over the pinned TLS connection. Returns
+        the raw, still-open response for the caller to pipe through (and release when
+        done) — a never-ending multipart body, so unlike async_fetch_image this has no
+        total timeout, only a connect timeout so a dead bridge doesn't hang forever."""
+        url = f"{self.base_url}/screen.mjpeg?token={self._token}"
+        try:
+            resp = await self._session.get(
+                url, ssl=self._ssl, timeout=aiohttp.ClientTimeout(total=None, connect=8)
+            )
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return None
+        if resp.status != 200:
+            await resp.release()
+            return None
+        return resp
+
     @callback
     def add_listener(self, cb: Callable[[], None]) -> Callable[[], None]:
         self._listeners.append(cb)

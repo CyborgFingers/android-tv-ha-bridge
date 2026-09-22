@@ -88,7 +88,14 @@ WebSocket over the same port**. The cert is self-signed; pin its SHA-256 fingerp
 | GET | `/api/apps` | token | `[ { package, name }, … ]` launchable apps |
 | GET | `/art.jpg` | open | current poster JPEG |
 | GET | `/art_next_<i>.jpg` | open | poster of `up_next_list[i]` (`/art_next.jpg` = index 0) |
+| GET | `/screen.mjpeg` | token | live screen mirror, `multipart/x-mixed-replace` JPEG frames (~2.5fps, ~640px wide) |
 | WS | `/ws?token=…` | token | live state pushes **and** commands (see below) |
+
+`/screen.mjpeg` returns `503` until the TV app's screen-streaming step has been granted
+once on-device (a system MediaProjection consent dialog — can't be pre-granted remotely).
+Capture only runs while a client is actually connected to this endpoint; an idle bridge
+costs nothing extra. The HA integration's `camera.<device>_screen` entity proxies this
+byte-for-byte, so it's also reachable at HA's own `/api/camera_proxy_stream/<entity_id>`.
 
 **Auth:** pass the paired token as `?token=…` or `Authorization: Bearer …`. Get a token
 by redeeming the 6-digit code shown in the TV app (`POST /api/pair`).

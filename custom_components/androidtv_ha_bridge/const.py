@@ -1,7 +1,7 @@
 """Constants for the Android TV HA Bridge integration."""
 
 DOMAIN = "androidtv_ha_bridge"
-PLATFORMS = ["media_player", "remote", "sensor"]
+PLATFORMS = ["camera", "media_player", "remote", "sensor"]
 
 CONF_TOKEN = "token"
 CONF_DEVICE_ID = "device_id"
