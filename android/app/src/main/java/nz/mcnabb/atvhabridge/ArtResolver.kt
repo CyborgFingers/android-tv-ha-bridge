@@ -20,7 +20,15 @@ class ArtResolver(private val contentResolver: ContentResolver) {
     @Volatile private var posterArt: Bitmap? = null
     @Volatile var version: Int = 0
         private set
-    private var lastMetadata: MediaMetadata? = null
+
+    // Two independent "did this actually change" signals, since neither alone
+    // covers every app: YouTube's Cobalt TV client (confirmed via logcat) reuses
+    // the same MediaMetadata container across videos AND leaves TITLE/DISPLAY_TITLE
+    // empty and no art URI — only a fresh embedded Bitmap object distinguishes one
+    // video's art from the next, so that's compared by reference. An app that uses
+    // a URI instead (e.g. Jellyfin) gets a real per-item string there instead.
+    private var lastArtBitmap: Bitmap? = null
+    private var lastArtUri: String? = null
     private var lastPosterUrl: String? = null
 
     /** Up-next posters by list index (served as /art_next_<i>.jpg). Replaced atomically
@@ -80,42 +88,45 @@ class ArtResolver(private val contentResolver: ContentResolver) {
     /** Must be called off the main thread: may perform network/content I/O. */
     fun update(metadata: MediaMetadata?) {
         if (metadata == null) {
-            lastMetadata = null
+            lastArtBitmap = null
+            lastArtUri = null
             if (currentArt != null) {
                 currentArt = null
                 version++
             }
             return
         }
-        if (metadata === lastMetadata) return
-        lastMetadata = metadata
+
+        val bitmap = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+        val uri = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+            ?: metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
+            ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+
+        // NOT metadata object identity: YouTube's Cobalt TV client (confirmed via
+        // logcat) redelivers callbacks reusing/mutating the same MediaMetadata
+        // container across genuinely different videos, with an EMPTY title/no art
+        // URI every time — so any comparison built from those fields is constant
+        // and this would never re-resolve after the first video. Only the embedded
+        // Bitmap object itself reliably differs per video for that client, so when
+        // one is present it's compared by reference; an app that uses a URI instead
+        // (e.g. Jellyfin) gets a real per-item string there and is compared on that.
+        val changed = if (bitmap != null) bitmap !== lastArtBitmap else uri != lastArtUri
+        if (!changed) return
+        lastArtBitmap = bitmap
+        lastArtUri = uri
+
         val resolved = try {
-            resolve(metadata)
+            bitmap ?: uri?.let(::fetchFromUri)
         } catch (e: Exception) {
             Log.e(TAG, "art resolve failed: ${e.message}")
             null
         }
-        // ponytail: a metadata-identity change bumps the version even if the
-        // resolved art is byte-identical to the previous one. A content hash
-        // would be exact but isn't worth it just to avoid an occasional extra
-        // HA image refetch.
         if (resolved != null || currentArt != null) {
             currentArt = resolved
             version++
         }
-    }
-
-    private fun resolve(metadata: MediaMetadata): Bitmap? {
-        metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)?.let { return it }
-        metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)?.let { return it }
-        metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)?.let { return it }
-
-        val uriString = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
-            ?: metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
-            ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
-            ?: return null
-
-        return fetchFromUri(uriString)
     }
 
     private fun fetchFromUri(uriString: String): Bitmap? {
