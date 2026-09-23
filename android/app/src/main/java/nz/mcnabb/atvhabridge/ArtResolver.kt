@@ -21,14 +21,19 @@ class ArtResolver(private val contentResolver: ContentResolver) {
     @Volatile var version: Int = 0
         private set
 
-    // Two independent "did this actually change" signals, since neither alone
-    // covers every app: YouTube's Cobalt TV client (confirmed via logcat) reuses
-    // the same MediaMetadata container across videos AND leaves TITLE/DISPLAY_TITLE
-    // empty and no art URI — only a fresh embedded Bitmap object distinguishes one
-    // video's art from the next, so that's compared by reference. An app that uses
-    // a URI instead (e.g. Jellyfin) gets a real per-item string there instead.
-    private var lastArtBitmap: Bitmap? = null
-    private var lastArtUri: String? = null
+    // A composite signature of everything that could distinguish one track's art
+    // from the next, since no single field is trustworthy for every app: YouTube's
+    // Cobalt TV client (confirmed via logcat) reuses the same MediaMetadata
+    // container across videos, leaves TITLE/DISPLAY_TITLE empty, publishes no art
+    // URI, AND (confirmed the hard way — a reference-identity check on the Bitmap
+    // alone still missed real changes) appears to reuse/overwrite the same Bitmap
+    // object rather than allocating a fresh one per track. DURATION reliably does
+    // differ per video (verified against real playback) and a downscaled pixel
+    // fingerprint catches a genuine content change even when the object itself
+    // didn't. If ANY component differs, treat it as changed — false positives
+    // just cost one extra (cheap, local) re-resolve; false negatives are the bug
+    // this whole thing exists to prevent.
+    private var lastArtSignature: String? = null
     private var lastPosterUrl: String? = null
 
     /** Up-next posters by list index (served as /art_next_<i>.jpg). Replaced atomically
@@ -88,8 +93,7 @@ class ArtResolver(private val contentResolver: ContentResolver) {
     /** Must be called off the main thread: may perform network/content I/O. */
     fun update(metadata: MediaMetadata?) {
         if (metadata == null) {
-            lastArtBitmap = null
-            lastArtUri = null
+            lastArtSignature = null
             if (currentArt != null) {
                 currentArt = null
                 version++
@@ -103,19 +107,14 @@ class ArtResolver(private val contentResolver: ContentResolver) {
         val uri = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+        val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
+            ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
+        val duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        val fingerprint = bitmap?.let { runCatching { contentFingerprint(it) }.getOrNull() }
+        val signature = "$title|$uri|$duration|$fingerprint"
 
-        // NOT metadata object identity: YouTube's Cobalt TV client (confirmed via
-        // logcat) redelivers callbacks reusing/mutating the same MediaMetadata
-        // container across genuinely different videos, with an EMPTY title/no art
-        // URI every time — so any comparison built from those fields is constant
-        // and this would never re-resolve after the first video. Only the embedded
-        // Bitmap object itself reliably differs per video for that client, so when
-        // one is present it's compared by reference; an app that uses a URI instead
-        // (e.g. Jellyfin) gets a real per-item string there and is compared on that.
-        val changed = if (bitmap != null) bitmap !== lastArtBitmap else uri != lastArtUri
-        if (!changed) return
-        lastArtBitmap = bitmap
-        lastArtUri = uri
+        if (signature == lastArtSignature) return
+        lastArtSignature = signature
 
         val resolved = try {
             bitmap ?: uri?.let(::fetchFromUri)
@@ -127,6 +126,23 @@ class ArtResolver(private val contentResolver: ContentResolver) {
             currentArt = resolved
             version++
         }
+    }
+
+    /** Cheap, genuinely content-based fingerprint: downscale to a tiny fixed size
+     * (near-free even for a large source bitmap) and hash those pixels. Needed
+     * because some apps reuse/overwrite the same Bitmap object per track rather
+     * than allocating a fresh one, which defeats a reference-identity check even
+     * though the pixels themselves did change. */
+    private fun contentFingerprint(bitmap: Bitmap): Long {
+        val w = FINGERPRINT_SIZE
+        val h = FINGERPRINT_SIZE
+        val small = Bitmap.createScaledBitmap(bitmap, w, h, false)
+        val pixels = IntArray(w * h)
+        small.getPixels(pixels, 0, w, 0, 0, w, h)
+        if (small !== bitmap) small.recycle()
+        var hash = 1125899906842597L
+        for (p in pixels) hash = hash * 31 + p
+        return hash
     }
 
     private fun fetchFromUri(uriString: String): Bitmap? {
@@ -149,5 +165,6 @@ class ArtResolver(private val contentResolver: ContentResolver) {
     companion object {
         private const val TAG = "ArtResolver"
         private const val THUMB_MAX_WIDTH = 640
+        private const val FINGERPRINT_SIZE = 8
     }
 }
