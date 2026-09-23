@@ -148,7 +148,9 @@ class ArtResolver(private val contentResolver: ContentResolver) {
     private fun fetchFromUri(uriString: String): Bitmap? {
         val uri = Uri.parse(uriString)
         val bytes = if (uri.scheme == "content") {
-            contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            withBlockingTimeout(CONTENT_FETCH_TIMEOUT_MS) {
+                contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            }
         } else {
             val conn = URL(uriString).openConnection() as HttpURLConnection
             conn.connectTimeout = 5000
@@ -166,5 +168,6 @@ class ArtResolver(private val contentResolver: ContentResolver) {
         private const val TAG = "ArtResolver"
         private const val THUMB_MAX_WIDTH = 640
         private const val FINGERPRINT_SIZE = 8
+        private const val CONTENT_FETCH_TIMEOUT_MS = 5000L
     }
 }

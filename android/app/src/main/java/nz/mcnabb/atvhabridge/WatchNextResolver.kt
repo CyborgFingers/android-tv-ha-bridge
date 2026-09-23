@@ -19,6 +19,7 @@ const val WATCH_NEXT_TYPE_NEXT = TvContract.WatchNextPrograms.WATCH_NEXT_TYPE_NE
  */
 object WatchNextResolver {
     private const val TAG = "WatchNext"
+    private const val QUERY_TIMEOUT_MS = 5000L
     val WATCH_NEXT: Uri = Uri.parse("content://android.media.tv/watch_next_program")
     private val PREVIEW = Uri.parse("content://android.media.tv/preview_program")
 
@@ -63,7 +64,7 @@ object WatchNextResolver {
             *(if (uri == WATCH_NEXT) arrayOf("watch_next_type") else emptyArray()),
         )
         return try {
-            cr.query(uri, cols, null, null, null)?.use { c ->
+            withBlockingTimeout(QUERY_TIMEOUT_MS) { cr.query(uri, cols, null, null, null) }?.use { c ->
                 val iPkg = c.getColumnIndex("package_name")
                 val iTitle = c.getColumnIndex("title")
                 val iEp = c.getColumnIndex("episode_title")
