@@ -127,7 +127,10 @@ adb shell appops set nz.mcnabb.atvhabridge SYSTEM_ALERT_WINDOW allow   # only if
 Capture then only runs while someone watches: a request that finds none asks for a grant (answer
 `503`, try again in a moment; not while the TV is asleep), and 15 s after the last viewer leaves
 (20 s after a `/screen.jpg` pull) the grant is released, so the TV's screen-capture indicator
-shows only while someone is watching. One capture display is held for the grant's whole life, but frames
+shows only while someone is watching. That re-grant briefly puts an invisible activity in front of
+the current app; most players keep playing, but some close themselves (TVNZ+ does), and apps
+with protected video capture as black anyway — so don't ask for the picture while those play.
+One capture display is held for the grant's whole life, but frames
 are only composited while someone watches — a `/screen.mjpeg` client, or a `/screen.jpg` pull
 (which keeps it on ~5 s, for pollers) — so an idle bridge costs nothing extra. The HA
 integration's `camera.<device>_screen` entity proxies the stream byte-for-byte (HA's
