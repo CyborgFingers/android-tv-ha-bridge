@@ -18,6 +18,7 @@ name you gave the TV, e.g. `Bedroom TV`):
 | Entity | What it carries |
 | --- | --- |
 | `media_player.<tv>` | State (`playing`/`paused`/`idle`), `media_title`, `media_series_title`, `app_name`, `app_id`, `media_position`, `media_duration`, `media_position_updated_at`, `entity_picture` (poster, proxied over TLS), `volume_level`, `is_volume_muted` — plus the extra attributes below. |
+| `camera.<tv>_screen` | Live screen mirror (MJPEG via `/api/camera_proxy_stream/<entity>`) and still image (`/api/camera_proxy/<entity>`, from the bridge's `/screen.jpg`). Empty until the TV app holds its screen-capture grant (see [`/screen.jpg`](#2-the-raw-local-api)). |
 | `remote.<tv>` | `send_command` with a bridge action (see command list); `turn_on`/`turn_off`; `turn_on` with `activity: <package>` launches an app. |
 | `sensor.<tv>_current_app`, `_up_next`, `_battery`, `_storage_free`, `_memory_free`, `_volume`, `_network`, `_ip`, `_wifi_ssid`, `_wifi_signal`, `_last_boot` | One sensor per device metric. |
 
@@ -39,6 +40,24 @@ action: media_player.play_media
 target: { entity_id: media_player.bedroom_tv }
 data: { media_content_type: up_next, media_content_id: "0" }
 ```
+
+**Open a link in an app:** `media_content_type: url`, the link as `media_content_id`, and the
+app that must open it as `extra.package` (required — the link is always scoped to that app, so a
+link two apps can handle never pops the TV's chooser). The TV refuses a package that isn't
+installed and any scheme but `https`, `http`, `nextpvrtv`, `youtube`, `vnd.youtube`.
+
+```yaml
+action: media_player.play_media
+target: { entity_id: media_player.bedroom_tv }
+data:
+  media_content_type: url
+  media_content_id: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  extra: { package: app.smarttube.fdroid }
+```
+
+**Search on the TV:** `media_content_type: search`, the words as `media_content_id` (≤ 100
+characters) — opens Google TV's universal search for them, on screen. `app` (a package) launches
+an app.
 
 Read any of it from a template, card or automation, e.g.:
 
@@ -89,13 +108,30 @@ WebSocket over the same port**. The cert is self-signed; pin its SHA-256 fingerp
 | GET | `/art.jpg` | open | current poster JPEG |
 | GET | `/art_next_<i>.jpg` | open | poster of `up_next_list[i]` (`/art_next.jpg` = index 0) |
 | GET | `/screen.mjpeg` | token | live screen mirror, `multipart/x-mixed-replace` JPEG frames (~2.5fps, ~640px wide) |
+| GET | `/screen.jpg` | token | one JPEG frame of the screen mirror (`Cache-Control: no-store`) |
 | WS | `/ws?token=…` | token | live state pushes **and** commands (see below) |
 
-`/screen.mjpeg` returns `503` until the TV app's screen-streaming step has been granted
-once on-device (a system MediaProjection consent dialog — can't be pre-granted remotely).
-Capture only runs while a client is actually connected to this endpoint; an idle bridge
-costs nothing extra. The HA integration's `camera.<device>_screen` entity proxies this
-byte-for-byte, so it's also reachable at HA's own `/api/camera_proxy_stream/<entity_id>`.
+`/screen.mjpeg` and `/screen.jpg` return `503` while the TV app holds no screen-capture grant
+(a system MediaProjection consent). Grant it once on the TV with the app's *Enable screen
+streaming* step (again after a restart); that grant is then kept.
+
+Optionally, let the app take the grant by itself, with nothing shown on the TV — set appop
+`PROJECT_MEDIA` once over adb. Opening the grant from the background also needs the app's
+accessibility service enabled, or appop `SYSTEM_ALERT_WINDOW`:
+
+```sh
+adb shell appops set nz.mcnabb.atvhabridge PROJECT_MEDIA allow
+adb shell appops set nz.mcnabb.atvhabridge SYSTEM_ALERT_WINDOW allow   # only if accessibility is off
+```
+
+Capture then only runs while someone watches: a request that finds none asks for a grant (answer
+`503`, try again in a moment; not while the TV is asleep), and 15 s after the last viewer leaves
+(20 s after a `/screen.jpg` pull) the grant is released, so the TV's screen-capture indicator
+shows only while someone is watching. One capture display is held for the grant's whole life, but frames
+are only composited while someone watches — a `/screen.mjpeg` client, or a `/screen.jpg` pull
+(which keeps it on ~5 s, for pollers) — so an idle bridge costs nothing extra. The HA
+integration's `camera.<device>_screen` entity proxies the stream byte-for-byte (HA's
+`/api/camera_proxy_stream/<entity_id>`) and serves `/screen.jpg` as its still image.
 
 **Auth:** pass the paired token as `?token=…` or `Authorization: Bearer …`. Get a token
 by redeeming the 6-digit code shown in the TV app (`POST /api/pair`).
@@ -114,7 +150,11 @@ Connect to `wss://<host>:<port>/ws?token=…`. The server:
 · `volume_up` · `volume_down` · `volume_mute` · `volume_unmute` · `volume_set` (`{"level": 0-100}`)
 · `sleep` · `wake` · `launch` (`{"package": "com.example"}`)
 · `play_next` (`{"index": <i>}` — plays `up_next_list[i]` by firing that tile's own launch intent,
-as read from the TV provider; the API takes an index, never an intent).
+as read from the TV provider; the API takes an index, never an intent)
+· `open` (`{"url": "…", "package": "…"}` — opens the link in that app only; refused unless the
+package is installed and the scheme is `https`, `http`, `nextpvrtv`, `youtube` or `vnd.youtube`)
+· `global_search` (`{"query": "…"}` — Google TV's universal search on screen; control characters
+stripped, ≤ 100 characters).
 
 ### The state document
 

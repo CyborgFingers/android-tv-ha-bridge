@@ -16,8 +16,9 @@
          recover show + episode + poster for apps that publish no MediaSession metadata.
          Runtime permission — granted by the user with a normal Allow dialog. -->
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
-    <!-- Optional live screen mirror for the HA camera entity — user grants once via
-         MainActivity's 4th onboarding step (system MediaProjection consent dialog). -->
+    <!-- Optional live screen mirror for the HA camera entity — granted via MainActivity's 4th
+         onboarding step (system MediaProjection consent dialog), or automatically whenever a
+         viewer asks when appop PROJECT_MEDIA is allowed (ScreenGrantActivity). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -74,6 +75,15 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_config" />
         </service>
+
+        <!-- Invisible bounce through the screen-capture consent when a viewer asks, auto-granted when
+             appop PROJECT_MEDIA is allowed — see ScreenGrantActivity. -->
+        <activity
+            android:name=".ScreenGrantActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <service
             android:name=".ScreenCaptureService"

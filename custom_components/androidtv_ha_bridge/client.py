@@ -122,6 +122,11 @@ class BridgeClient:
             pass
         return None, None
 
+    async def async_screen_frame(self) -> bytes | None:
+        """One JPEG of the screen mirror (/screen.jpg) — None while capture is off."""
+        image, _ = await self.async_fetch_image(f"{self.base_url}/screen.jpg?token={self._token}")
+        return image
+
     async def async_open_screen_stream(self) -> aiohttp.ClientResponse | None:
         """Open the bridge's live /screen.mjpeg over the pinned TLS connection. Returns
         the raw, still-open response for the caller to pipe through (and release when

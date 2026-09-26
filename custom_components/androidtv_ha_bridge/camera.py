@@ -3,12 +3,14 @@
 Proxies the bridge's own multipart/x-mixed-replace MJPEG stream (BridgeServer.kt's
 /screen.mjpeg) straight through over the pinned-TLS connection, byte-for-byte — no
 re-encoding on this side. That's what makes it reachable via HA's own standard
-/api/camera_proxy_stream/<entity_id>, which the web dashboard's generic camera card
-AND the Astrion remote's existing CameraCard both already know how to consume with
-no changes on their end.
+/api/camera_proxy_stream/<entity_id>, which the dashboard's generic camera card and
+any other client of HA's camera proxy already know how to consume with no changes on
+their end. Still images (snapshots, dashboard thumbnails) come from the
+bridge's /screen.jpg.
 
-Unavailable (not erroring) until the bridge's MediaProjection grant is set up once,
-on-device, via MainActivity's 4th onboarding step.
+Empty (not erroring) until the bridge holds a MediaProjection grant — requested by the TV
+app whenever a viewer asks when appop PROJECT_MEDIA is allowed, else via its 4th
+onboarding step.
 """
 from __future__ import annotations
 
@@ -44,6 +46,11 @@ class BridgeScreenCamera(BridgeEntity, Camera):
         self._attr_unique_id = f"{client.device_id}_screen"
         self._attr_name = "Screen"
         self._attr_is_streaming = True
+
+    async def async_camera_image(
+        self, width: int | None = None, height: int | None = None
+    ) -> bytes | None:
+        return await self._client.async_screen_frame()
 
     async def handle_async_mjpeg_stream(self, request: web.Request) -> web.StreamResponse | None:
         upstream = await self._client.async_open_screen_stream()

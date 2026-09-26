@@ -125,6 +125,7 @@ class MediaListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        ScreenGrantActivity.appContext = applicationContext   // BridgeServer's way to ask for a grant
         isConnected = true
         try {
             pairing = Pairing(this)
@@ -330,6 +331,21 @@ class MediaListenerService : NotificationListenerService() {
     private fun buildSnapshot(controller: MediaController): NowPlayingSnapshot {
         val metadata = controller.metadata
         val ps = controller.playbackState
+        // The session's app isn't the one on screen and isn't playing (Jellyfin's always-empty
+        // session, a paused YouTube): it isn't what's on the TV. Name the app that is, with nothing
+        // playing named — any audio is that app's (Live TV publishes no session at all), and the
+        // Watch-Next tile is only the last thing watched (it would name an old show over Live TV).
+        val onScreen = Controls.accessibility?.rootInActiveWindow?.packageName?.toString()
+            ?.takeUnless { it == packageName }
+        if (onScreen != null && onScreen != controller.packageName && ps?.state != PlaybackState.STATE_PLAYING) {
+            val musicActive = runCatching { audioManager?.isMusicActive == true }.getOrDefault(false)
+            return NowPlayingSnapshot(
+                title = null, seriesTitle = null, episodeTitle = null, artist = null, album = null,
+                durationMs = 0, positionMs = 0, positionUpdatedAt = System.currentTimeMillis(),
+                state = if (musicActive) "playing" else "idle",
+                appPackage = onScreen, appName = resolveAppName(onScreen),
+            )
+        }
         val mediaTitle = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
             ?: metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)
         val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)

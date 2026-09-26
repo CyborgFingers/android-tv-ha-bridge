@@ -18,6 +18,7 @@ import java.io.InputStream
  *   GET  /art.jpg                  current poster JPEG                 (open; LAN image)
  *   GET  /art_next_{i}.jpg         poster of up_next_list[i]; /art_next.jpg = i 0 (open)
  *   GET  /screen.mjpeg             live screen mirror, multipart MJPEG (token)
+ *   GET  /screen.jpg               one frame of the screen mirror      (token)
  *   WS   /ws?token=...             live state pushes                   (token)
  */
 class BridgeServer(
@@ -83,6 +84,7 @@ class BridgeServer(
             session.uri.startsWith("/art_next_") ->
                 serveArt("next_" + session.uri.removePrefix("/art_next_").removeSuffix(".jpg"))
             session.uri == "/screen.mjpeg" -> if (authed(session)) serveScreen() else unauthorized()
+            session.uri == "/screen.jpg" -> if (authed(session)) serveScreenFrame() else unauthorized()
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         }
     } catch (e: Exception) {
@@ -146,19 +148,33 @@ class BridgeServer(
     }
 
     /** Live screen mirror. Requires ScreenCaptureService to already hold a MediaProjection
-     * grant (set up once from MainActivity's 4th onboarding step); if it doesn't, tells
-     * the client plainly rather than hanging. addClient()/removeClient() on the service
-     * gate the actual capture pipeline to "someone is watching", so an idle bridge with
-     * no dashboard open costs nothing extra. */
+     * grant (ScreenGrantActivity when a viewer asks, or MainActivity's 4th onboarding step); if it
+     * doesn't, tells the client plainly rather than hanging. addClient()/removeClient() on
+     * the service gate the actual capture pipeline to "someone is watching", so an idle
+     * bridge with no dashboard open costs nothing extra. */
     private fun serveScreen(): Response {
         if (ScreenCaptureService.instance == null) {
+            ScreenGrantActivity.requestForViewer()
             return newFixedLengthResponse(
                 Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT,
-                "screen streaming not enabled on this device — open the app once to grant it",
+                "screen capture starting — try again in a moment (or open the app once to grant it)",
             )
         }
         return newChunkedResponse(Response.Status.OK, "multipart/x-mixed-replace; boundary=$MJPEG_BOUNDARY", MjpegStream()).apply {
             addHeader("Cache-Control", "no-cache")
+        }
+    }
+
+    /** One frame of the mirror (HA's camera still image); 503 while capture isn't running. */
+    private fun serveScreenFrame(): Response {
+        val service = ScreenCaptureService.instance ?: run {
+            ScreenGrantActivity.requestForViewer()
+            return newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "screen capture starting")
+        }
+        val jpeg = service.snapshot()
+            ?: return newFixedLengthResponse(Response.Status.SERVICE_UNAVAILABLE, MIME_PLAINTEXT, "no frame yet — try again in a moment")
+        return newFixedLengthResponse(Response.Status.OK, "image/jpeg", ByteArrayInputStream(jpeg), jpeg.size.toLong()).apply {
+            addHeader("Cache-Control", "no-store")
         }
     }
 
@@ -194,14 +210,7 @@ class BridgeServer(
             if (svc == null) { buffer = ByteArray(0); pos = 0; return }
             if (!started) { svc.addClient(); started = true }
 
-            // First frame may not be ready the instant capture starts — wait briefly
-            // rather than emit a broken/empty frame.
-            var jpeg = svc.latestJpeg()
-            var waited = 0
-            while (jpeg == null && waited < 2000) {
-                Thread.sleep(100); waited += 100
-                jpeg = svc.latestJpeg()
-            }
+            val jpeg = svc.awaitJpeg()
             if (jpeg == null) { buffer = ByteArray(0); pos = 0; return }
 
             Thread.sleep(FRAME_INTERVAL_MS)

@@ -8,6 +8,7 @@ from homeassistant.components.media_player import (
     MediaType,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
@@ -219,3 +220,13 @@ class BridgeMediaPlayer(BridgeEntity, MediaPlayerEntity):
             # Play up-next pick <media_id> — its index in `up_next_list` — through the
             # tile's own launch intent, which the bridge kept when it published the list.
             await self._client.async_send("play_next", index=int(media_id))
+        elif media_type == "url":
+            # Open a link in one named app (extra: {package: ...}) — scoped, so a link two apps
+            # can handle never pops the TV's chooser. The bridge re-checks scheme + package.
+            package = (kwargs.get("extra") or {}).get("package")
+            if not package:
+                raise ServiceValidationError("play_media type url needs extra.package")
+            await self._client.async_send("open", url=media_id, package=package)
+        elif media_type == "search":
+            # Google TV's universal search, on screen.
+            await self._client.async_send("global_search", query=media_id)

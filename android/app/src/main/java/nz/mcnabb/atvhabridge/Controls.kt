@@ -1,10 +1,12 @@
 package nz.mcnabb.atvhabridge
 
+import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.media.session.MediaController
 import android.media.session.PlaybackState
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -52,6 +54,8 @@ object Controls {
         "volume_set" -> setVolume(params.optInt("level", -1))
         "launch" -> launch(params.optString("package"))
         "play_next" -> playNext(params.optInt("index", -1))
+        "open" -> open(params.optString("url"), params.optString("package"))
+        "global_search" -> globalSearch(params.optString("query"))
         else -> false
     }
 
@@ -103,6 +107,32 @@ object Controls {
         return try { ctx.startActivity(intent); true } catch (e: Exception) { false }
     }
 
+    /** ACTION_VIEW [url] in [pkg] only — scoped, so a link two apps can open (SmartTube and
+     * the official YouTube) never pops the chooser. See [openAllowed] for what may be opened. */
+    private fun open(url: String, pkg: String): Boolean {
+        val ctx = appContext ?: return false
+        if (!openAllowed(url, pkg) || !installed(ctx, pkg)) return false
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url).normalizeScheme())
+            .setPackage(pkg)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return try { ctx.startActivity(intent); true } catch (e: Exception) { false }
+    }
+
+    /** Google TV's universal search, on screen, across every app. */
+    private fun globalSearch(raw: String): Boolean {
+        val query = searchQuery(raw) ?: return false
+        val ctx = appContext ?: return false
+        val intent = Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH)
+            .putExtra(SearchManager.QUERY, query)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (installed(ctx, GOOGLE_TV_SEARCH)) intent.setPackage(GOOGLE_TV_SEARCH)
+        return try { ctx.startActivity(intent); true } catch (e: Exception) { false }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun installed(ctx: Context, pkg: String) =
+        runCatching { ctx.packageManager.getPackageInfo(pkg, 0) }.isSuccess
+
     /** Play up-next pick [index] the way the launcher would: fire the tile's own intent. If
      * the app that owns the tile is still inside its player, back out of it first and fire
      * a moment later — a deep link that lands on a live player is dropped by some apps
@@ -134,4 +164,26 @@ object Controls {
 
     // How long the app gets to close its player before the tile's intent is fired.
     private const val LEAVE_PLAYER_MS = 900L
+
+    private const val GOOGLE_TV_SEARCH = "com.google.android.katniss"
 }
+
+/** Schemes `open` hands to an app: web links and the app deep links in use — never file:,
+ * content:, intent: or javascript:. */
+private val OPEN_SCHEMES = setOf("https", "http", "nextpvrtv", "youtube", "vnd.youtube")
+private val PACKAGE_NAME = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
+private const val MAX_URL_CHARS = 2048
+private const val MAX_SEARCH_CHARS = 100
+
+/** Whether `open` may fire [url] at [pkg]: an allow-listed scheme, no control characters, a
+ * well-formed package name. That the package is installed is checked on the device. */
+fun openAllowed(url: String, pkg: String): Boolean =
+    url.length <= MAX_URL_CHARS &&
+        url.none { it.isISOControl() } &&
+        url.substringBefore(':', "").lowercase() in OPEN_SCHEMES &&
+        PACKAGE_NAME.matches(pkg)
+
+/** The `global_search` query with control characters stripped, or null when that leaves
+ * nothing or more than [MAX_SEARCH_CHARS]. */
+fun searchQuery(raw: String): String? =
+    raw.filterNot { it.isISOControl() }.trim().takeIf { it.isNotEmpty() && it.length <= MAX_SEARCH_CHARS }
