@@ -99,6 +99,10 @@ class BridgeClient:
         self._listeners: list[Callable[[], None]] = []
         self.state: dict = {}
         self.available = False
+        # Launchable apps ([{package, name}] from /api/apps), fetched on connect and again when an
+        # app nobody has seen comes to the front (a new install).
+        self.apps: list[dict] = []
+        self._apps_task: asyncio.Task | None = None
 
     @property
     def base_url(self) -> str:
@@ -172,6 +176,7 @@ class BridgeClient:
                     self.available = True
                     fails = 0
                     self._notify()
+                    self._refresh_apps()
                     _LOGGER.debug("Connected to bridge %s at %s:%s", self.device_id, self.host, self.port)
                     async for msg in ws:
                         if msg.type is aiohttp.WSMsgType.TEXT:
@@ -179,6 +184,9 @@ class BridgeClient:
                                 self.state = json.loads(msg.data)
                             except ValueError:
                                 continue
+                            package = (self.state.get("app") or {}).get("package")
+                            if package and self.apps and all(a["package"] != package for a in self.apps):
+                                self._refresh_apps()
                             # Re-broadcast the full document on the HA event bus so a
                             # separate integration can map it without touching our entities.
                             self._hass.bus.async_fire(
@@ -232,6 +240,31 @@ class BridgeClient:
         except Exception as err:  # noqa: BLE001 - discovery must never crash the loop
             _LOGGER.debug("Bridge %s rediscover failed: %s", self.device_id, err)
         return None
+
+    @callback
+    def _refresh_apps(self) -> None:
+        """Fetch the launchable apps in the background; one fetch at a time."""
+        if self._apps_task is None or self._apps_task.done():
+            self._apps_task = self._hass.async_create_background_task(
+                self._async_fetch_apps(), f"{DOMAIN}_apps_{self.device_id}"
+            )
+
+    async def _async_fetch_apps(self) -> None:
+        try:
+            async with self._session.get(
+                f"{self.base_url}/api/apps?token={self._token}",
+                ssl=self._ssl,
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status != 200:
+                    return
+                apps = await resp.json()
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError) as err:
+            _LOGGER.debug("Bridge %s app list failed: %s", self.device_id, err)
+            return
+        if isinstance(apps, list):
+            self.apps = [a for a in apps if isinstance(a, dict) and a.get("package") and a.get("name")]
+            self._notify()
 
     async def async_send(self, action: str, **extra) -> None:
         """Send a control command — over the open socket first, HTTP as fallback."""

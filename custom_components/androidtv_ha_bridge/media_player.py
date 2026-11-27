@@ -34,6 +34,7 @@ FEATURES = (
     | MediaPlayerEntityFeature.TURN_ON
     | MediaPlayerEntityFeature.TURN_OFF
     | MediaPlayerEntityFeature.PLAY_MEDIA
+    | MediaPlayerEntityFeature.SELECT_SOURCE
 )
 
 
@@ -96,6 +97,15 @@ class BridgeMediaPlayer(BridgeEntity, MediaPlayerEntity):
     @property
     def app_id(self) -> str | None:
         return self._app.get("package")
+
+    @property
+    def source(self) -> str | None:
+        """The current app; sources are the TV's launchable apps."""
+        return self.app_name
+
+    @property
+    def source_list(self) -> list[str] | None:
+        return sorted({a["name"] for a in self._client.apps}, key=str.casefold) or None
 
     @property
     def media_duration(self) -> int | None:
@@ -218,6 +228,13 @@ class BridgeMediaPlayer(BridgeEntity, MediaPlayerEntity):
 
     async def async_turn_on(self) -> None:
         await self._client.async_send("wake")
+
+    async def async_select_source(self, source: str) -> None:
+        """Launch an app by the name it has in `source_list`."""
+        package = next((a["package"] for a in self._client.apps if a["name"] == source), None)
+        if package is None:
+            raise ServiceValidationError(f"No app named {source!r} on this TV")
+        await self._client.async_send("launch", package=package)
 
     async def async_play_media(self, media_type: str, media_id: str, **kwargs) -> None:
         if media_type in ("app", MediaType.APP):
