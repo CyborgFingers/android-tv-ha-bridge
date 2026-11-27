@@ -67,7 +67,7 @@ Each paired TV is its own device. For a TV named **Bedroom TV**:
 
 | Entity | What it does |
 | --- | --- |
-| `media_player.bedroom_tv` | State, `media_title`, `media_series_title`, episode, position / duration, poster (`entity_picture`), current app, up-next picks (`up_next_list`, with posters — next episodes first, never what's already playing) and ad attributes. Play / pause / stop / next / previous / seek, volume, turn on / off, `play_media` (launch an app, or play an up-next pick). |
+| `media_player.bedroom_tv` | State, `media_title`, `media_series_title`, episode, position / duration, poster (`entity_picture`), current app, up-next picks (`up_next_list`, with posters — next episodes first, never what's already playing) and ad attributes. The TV's launchable apps as `source_list`, with the current app as `source`. Play / pause / stop / next / previous / seek, volume, turn on / off, `select_source` (open an app by name), `play_media` (launch an app, or play an up-next pick). |
 | `remote.bedroom_tv` | `remote.send_command` — D-pad, OK, Back, Home, and `launch:<package>` to open an app. |
 | `sensor.bedroom_tv_current_app` · `sensor.bedroom_tv_up_next` | The foreground app and what's up next. |
 | Diagnostics | Battery, storage free, memory free, volume, network, IP address, Wi-Fi SSID, Wi-Fi signal, last boot. |
